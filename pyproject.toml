@@ -8,14 +8,14 @@ version = "0.1.2"
 description = "CLI + GitHub Action that blocks unsafe LLM app changes: runs baseline vs candidate configs over a golden dataset and fails the check on a material regression."
 readme = "README.md"
 requires-python = ">=3.11"
-license = { text = "MIT" }
+license = { text = "GPL-3.0-only" }
 authors = [{ name = "llm-release-gate contributors" }]
 keywords = ["llm", "evaluation", "regression", "ci", "release-gate"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Environment :: Console",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
     "Programming Language :: Python :: 3",
     "Topic :: Software Development :: Quality Assurance",
 ]
