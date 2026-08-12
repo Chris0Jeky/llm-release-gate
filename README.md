@@ -153,4 +153,4 @@ fake provider replays committed fixtures byte-for-byte.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+GPL-3.0-only - see [LICENSE](LICENSE) and [RELICENSING.md](RELICENSING.md).
