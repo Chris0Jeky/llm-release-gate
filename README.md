@@ -1,5 +1,7 @@
 # llm-release-gate
 
+[![CI](https://github.com/Chris0Jeky/llm-release-gate/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Chris0Jeky/llm-release-gate/actions/workflows/ci.yml)
+
 **Stop unsafe prompt, model, retrieval, tool, or configuration changes from being merged.**
 
 llm-release-gate is an open-source CLI and GitHub Action that runs your **baseline** and
@@ -99,9 +101,11 @@ alone), each at level `fail` or `warn`. See `examples/*/thresholds.json`.
 
 ## GitHub Action
 
-The public `v0` reference is created with the initial `v0.1.0` release. Until that release is
-visible, no remote Action reference is available: clone this repository to run its CLI/examples,
-or use `uses: ./` only from a workflow inside a checkout of this repository.
+The Action is publicly available in the
+[GitHub Marketplace](https://github.com/marketplace/actions/llm-release-gate). Use
+`Chris0Jeky/llm-release-gate@v0`: this compatibility reference currently resolves to the reviewed
+[`v0.1.2` release](https://github.com/Chris0Jeky/llm-release-gate/releases/tag/v0.1.2). Use
+`uses: ./` only from a workflow inside a checkout of this repository.
 
 ```yaml
 permissions:
