@@ -1,0 +1,202 @@
+{
+  "schema_version": "1.0",
+  "risks": [
+    {
+      "id": "R-01",
+      "severity": "high",
+      "likelihood": "medium",
+      "confidence": "high",
+      "area": "agent security",
+      "finding": "`Bash(rg:*)` can auto-approve arbitrary child-command execution via ripgrep's `--pre` option.",
+      "evidence": [
+        ".claude/settings.json",
+        "issue #20 comment"
+      ],
+      "mitigation": "I-001"
+    },
+    {
+      "id": "R-02",
+      "severity": "critical",
+      "likelihood": "high",
+      "confidence": "high",
+      "area": "verdict integrity",
+      "finding": "Replay evidence is not cryptographically bound to the rendered request/config, so stale fixtures can let a changed prompt appear evaluated and pass.",
+      "evidence": [
+        "providers/fake.py",
+        "adapters/__init__.py"
+      ],
+      "mitigation": "I-015"
+    },
+    {
+      "id": "R-03",
+      "severity": "high",
+      "likelihood": "high",
+      "confidence": "high",
+      "area": "release/licensing",
+      "finding": "Main and the immutable v0.1.2 release share version 0.1.2 while carrying different licence/package content; floating v0 still targets the MIT snapshot.",
+      "evidence": [
+        "pyproject.toml",
+        "v0.1.2 pyproject.toml",
+        "RELICENSING.md",
+        "tag objects"
+      ],
+      "mitigation": "I-003/I-004"
+    },
+    {
+      "id": "R-04",
+      "severity": "high",
+      "likelihood": "medium",
+      "confidence": "high",
+      "area": "cost correctness",
+      "finding": "Non-finite/negative pricing values and arbitrary currency can enter a metric labelled and formatted as USD.",
+      "evidence": [
+        "loading.py",
+        "pricing.py",
+        "reports/__init__.py"
+      ],
+      "mitigation": "I-005"
+    },
+    {
+      "id": "R-05",
+      "severity": "high",
+      "likelihood": "medium",
+      "confidence": "high",
+      "area": "extension correctness",
+      "finding": "Scorer outputs are not checked against declared metric contracts; missing/undeclared/malformed results can silently distort denominators.",
+      "evidence": [
+        "scorers/__init__.py",
+        "runner.py"
+      ],
+      "mitigation": "I-009"
+    },
+    {
+      "id": "R-06",
+      "severity": "medium",
+      "likelihood": "low",
+      "confidence": "high",
+      "area": "scoring",
+      "finding": "The literal `<missing>` fallback can equal a legitimate expected field value.",
+      "evidence": [
+        "scorers/quality.py"
+      ],
+      "mitigation": "I-007"
+    },
+    {
+      "id": "R-07",
+      "severity": "high",
+      "likelihood": "medium",
+      "confidence": "high",
+      "area": "comparison semantics",
+      "finding": "Relative aggregate deltas may compare different successful-item cohorts; partial latency coverage can still drive rules.",
+      "evidence": [
+        "runner.py",
+        "gate.py"
+      ],
+      "mitigation": "I-018"
+    },
+    {
+      "id": "R-08",
+      "severity": "high",
+      "likelihood": "medium",
+      "confidence": "high",
+      "area": "CI security",
+      "finding": "The Action supports pull_request_target comments but does not prominently constrain unsafe untrusted-head execution with write tokens/secrets.",
+      "evidence": [
+        "action.yml",
+        "GitHub secure pull_request_target guidance"
+      ],
+      "mitigation": "I-013"
+    },
+    {
+      "id": "R-09",
+      "severity": "high",
+      "likelihood": "medium",
+      "confidence": "high",
+      "area": "privacy",
+      "finding": "JSON/HTML reports persist raw model outputs and provider errors; public workflows can disclose sensitive evaluation content.",
+      "evidence": [
+        "runner.py",
+        "reports/html.py"
+      ],
+      "mitigation": "I-021"
+    },
+    {
+      "id": "R-10",
+      "severity": "medium",
+      "likelihood": "medium",
+      "confidence": "high",
+      "area": "report integrity",
+      "finding": "Markdown interpolates dynamic labels/notes without table/mention escaping.",
+      "evidence": [
+        "reports/markdown.py"
+      ],
+      "mitigation": "I-008"
+    },
+    {
+      "id": "R-11",
+      "severity": "medium",
+      "likelihood": "medium",
+      "confidence": "medium",
+      "area": "portability",
+      "finding": "The composite Action uses pip build isolation and gh/bash assumptions despite a zero-dependency/offline positioning.",
+      "evidence": [
+        "action.yml",
+        "pyproject.toml"
+      ],
+      "mitigation": "I-010/I-013"
+    },
+    {
+      "id": "R-12",
+      "severity": "medium",
+      "likelihood": "medium",
+      "confidence": "high",
+      "area": "input validation",
+      "finding": "Several nested shapes, duplicate keys and unknown policy fields are not rejected at load time, so malformed inputs can become internal errors or weakened policy.",
+      "evidence": [
+        "loading.py",
+        "adapters/grounded.py",
+        "providers/fake.py"
+      ],
+      "mitigation": "I-006"
+    },
+    {
+      "id": "R-13",
+      "severity": "medium",
+      "likelihood": "medium",
+      "confidence": "high",
+      "area": "supply chain",
+      "finding": "Upstream Actions are referenced by movable major tags; release tags are annotated but the v0 tag object is unsigned.",
+      "evidence": [
+        ".github/workflows/ci.yml",
+        "action.yml",
+        "tag object"
+      ],
+      "mitigation": "I-012/I-030"
+    },
+    {
+      "id": "R-14",
+      "severity": "medium",
+      "likelihood": "high",
+      "confidence": "high",
+      "area": "adoption",
+      "finding": "Current manual fixture generation makes the Marketplace Action non-drop-in for real prompt/retrieval/tool changes.",
+      "evidence": [
+        "docs/extending.md",
+        "examples"
+      ],
+      "mitigation": "I-014/I-017/I-023"
+    },
+    {
+      "id": "R-15",
+      "severity": "unknown",
+      "likelihood": "unknown",
+      "confidence": "high",
+      "area": "repository governance",
+      "finding": "Branch protection/ruleset state could not be read through the connector.",
+      "evidence": [
+        "GitHub API returned 403"
+      ],
+      "mitigation": "Verify during I-002/I-004"
+    }
+  ]
+}

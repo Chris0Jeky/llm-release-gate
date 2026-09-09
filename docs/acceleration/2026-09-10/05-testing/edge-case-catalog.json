@@ -1,0 +1,190 @@
+{
+  "schema_version": "1.0",
+  "edge_cases": [
+    {
+      "id": "E-001",
+      "area": "JSON loading",
+      "case": "NaN, Infinity, -Infinity or 1e999 in any input",
+      "expected": "configuration error / exit 2; never hash or compare non-finite values",
+      "tasks": [
+        "I-005",
+        "I-006"
+      ]
+    },
+    {
+      "id": "E-002",
+      "area": "JSON loading",
+      "case": "duplicate object keys",
+      "expected": "configuration error naming duplicate key",
+      "tasks": [
+        "I-006"
+      ]
+    },
+    {
+      "id": "E-003",
+      "area": "pricing",
+      "case": "negative rate or non-USD currency",
+      "expected": "reject in v0.x or use currency-specific metric/rendering; never label arbitrary currency USD",
+      "tasks": [
+        "I-005"
+      ]
+    },
+    {
+      "id": "E-004",
+      "area": "field match",
+      "case": "expected literal string '<missing>' and field absent",
+      "expected": "absent does not equal literal sentinel",
+      "tasks": [
+        "I-007"
+      ]
+    },
+    {
+      "id": "E-005",
+      "area": "scorers",
+      "case": "scorer omits a declared metric or emits an undeclared one",
+      "expected": "clean contract error; no denominator distortion",
+      "tasks": [
+        "I-009"
+      ]
+    },
+    {
+      "id": "E-006",
+      "area": "providers",
+      "case": "negative/boolean/NaN usage or latency from custom provider",
+      "expected": "contract error recorded or run fails according to explicit policy",
+      "tasks": [
+        "I-009"
+      ]
+    },
+    {
+      "id": "E-007",
+      "area": "fixtures",
+      "case": "prompt/params/adapter changes while fixture output is reused",
+      "expected": "request fingerprint mismatch; exit 2",
+      "tasks": [
+        "I-015"
+      ]
+    },
+    {
+      "id": "E-008",
+      "area": "comparison",
+      "case": "candidate fails difficult items and scores well on survivors",
+      "expected": "candidate-wide error/coverage rule fails; relative delta uses common cohort",
+      "tasks": [
+        "I-018"
+      ]
+    },
+    {
+      "id": "E-009",
+      "area": "comparison",
+      "case": "metric applicable to different items on each side",
+      "expected": "relative rule uses paired applicability and exposes paired coverage",
+      "tasks": [
+        "I-018"
+      ]
+    },
+    {
+      "id": "E-010",
+      "area": "latency",
+      "case": "latency exists for one fast item only",
+      "expected": "coverage guard prevents misleading p95/mean gate",
+      "tasks": [
+        "I-018"
+      ]
+    },
+    {
+      "id": "E-011",
+      "area": "reports",
+      "case": "model/config/item names contain pipes, newlines, backticks, HTML or @mentions",
+      "expected": "valid escaped Markdown; no accidental notification; HTML escaped",
+      "tasks": [
+        "I-008"
+      ]
+    },
+    {
+      "id": "E-012",
+      "area": "reports",
+      "case": "multi-megabyte or secret-like output",
+      "expected": "selected disclosure profile redacts/truncates deterministically and records hash/length",
+      "tasks": [
+        "I-021",
+        "I-022"
+      ]
+    },
+    {
+      "id": "E-013",
+      "area": "Action",
+      "case": "fork PR lacks comment permission",
+      "expected": "gate verdict still enforced; warning and job summary available",
+      "tasks": [
+        "I-013"
+      ]
+    },
+    {
+      "id": "E-014",
+      "area": "Action",
+      "case": "pull_request_target checks out untrusted head",
+      "expected": "security guide says never do this with write token; reference workflow avoids it",
+      "tasks": [
+        "I-013"
+      ]
+    },
+    {
+      "id": "E-015",
+      "area": "Action",
+      "case": "self-hosted runner lacks gh or compatible Bash",
+      "expected": "preflight error/warning and documented prerequisites; gate verdict remains distinguishable",
+      "tasks": [
+        "I-013"
+      ]
+    },
+    {
+      "id": "E-016",
+      "area": "outputs",
+      "case": "process interrupted between report files",
+      "expected": "atomic writes or clearly incomplete staging directory; manifest written last",
+      "tasks": [
+        "I-022"
+      ]
+    },
+    {
+      "id": "E-017",
+      "area": "snapshot",
+      "case": "duplicate/missing item IDs or dataset hash mismatch",
+      "expected": "snapshot validation fails before scoring",
+      "tasks": [
+        "I-014",
+        "I-020"
+      ]
+    },
+    {
+      "id": "E-018",
+      "area": "snapshot",
+      "case": "response hash does not match raw response",
+      "expected": "validation fails; no comparison",
+      "tasks": [
+        "I-014"
+      ]
+    },
+    {
+      "id": "E-019",
+      "area": "statistics",
+      "case": "one applicable item produces 100% delta",
+      "expected": "minimum-N/coverage guard can make relative metric unavailable/fail",
+      "tasks": [
+        "I-018",
+        "I-028"
+      ]
+    },
+    {
+      "id": "E-020",
+      "area": "registry",
+      "case": "extension registers an existing name",
+      "expected": "duplicate registration rejected unless an explicit override mechanism exists",
+      "tasks": [
+        "I-009",
+        "I-029"
+      ]
+    }
+  ]
+}

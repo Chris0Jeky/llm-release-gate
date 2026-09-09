@@ -1,0 +1,65 @@
+{
+  "schema_version": "1.0",
+  "project": "Chris0Jeky/llm-release-gate",
+  "bundle_created_at": "2026-09-09",
+  "analyzed_branch": "main",
+  "analyzed_head": "f9fe5adfd4c2d7e1ea5c982fd686a173e3e910cb",
+  "status": "proposal",
+  "authority": "Live repository state and policy outrank this bundle.",
+  "entrypoints": {
+    "bundle_readme": "README.md",
+    "review": "00-assessment/repository-review.md",
+    "decision_deck": "interactive-decision-deck.html",
+    "decision_catalog": "01-decisions/decision-catalog.json",
+    "issue_catalog": "02-roadmap/issue-catalog.json",
+    "risk_register": "00-assessment/risk-register.json",
+    "agent_start": "06-agent/AGENT_START.md",
+    "agent_prompt": "06-agent/agent-prompt.md",
+    "unbundler": "scripts/unbundle.py"
+  },
+  "counts": {
+    "decisions": 18,
+    "issues": 33,
+    "risks": 15,
+    "adrs": 6
+  },
+  "adrs": [
+    "03-architecture/adr/0001-hermetic-policy-gate.md",
+    "03-architecture/adr/0002-separate-plan-execute-compare.md",
+    "03-architecture/adr/0003-request-bound-evidence.md",
+    "03-architecture/adr/0004-paired-cohorts-and-coverage.md",
+    "03-architecture/adr/0005-disclosure-profiles.md",
+    "03-architecture/adr/0006-release-licence-and-floating-tag.md"
+  ],
+  "implementation_references": [
+    "04-implementation/strict-json-and-input-validation.md",
+    "04-implementation/request-fingerprints.md",
+    "04-implementation/extension-contracts.md",
+    "04-implementation/paired-comparison.md",
+    "04-implementation/markdown-safety.md",
+    "04-implementation/atomic-output-writes.md",
+    "04-implementation/run-snapshot.schema.json",
+    "04-implementation/action-offline-install.md",
+    "04-implementation/ci-hardening.md",
+    "04-implementation/issue-20-and-sentinel-patches.md"
+  ],
+  "first_safe_slice": [
+    "I-001",
+    "I-002"
+  ],
+  "human_confirmation_required": [
+    "licence or floating-tag change",
+    "publication/account action",
+    "provider/secret choice",
+    "data disclosure default",
+    "persistence/retention/hosting",
+    "material product-boundary change"
+  ],
+  "constraints": [
+    "Do not infer unconfirmed owner decisions.",
+    "Reconcile drift from analyzed_head before implementation.",
+    "Treat snippets as references, not tested patches.",
+    "Preserve fail-closed behavior, honest unavailable values, stable exit codes, and deterministic report identity.",
+    "Do not activate trigger-gated horizon work without observed demand evidence."
+  ]
+}
