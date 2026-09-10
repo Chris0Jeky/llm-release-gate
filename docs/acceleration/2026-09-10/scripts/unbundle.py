@@ -27,7 +27,10 @@ def load_json(path: pathlib.Path) -> Any:
 
 def resolve_output_path(repo: pathlib.Path, output: pathlib.Path) -> pathlib.Path:
     """Keep replaceable scaffolds below the repository's dedicated planning root."""
-    planning_root = (repo / ".planning").resolve()
+    planning_path = repo / ".planning"
+    planning_root = planning_path.resolve()
+    if planning_root != planning_path:
+        raise SystemExit(f"planning root must not redirect outside the repository: {planning_path}")
     out = (repo / output).resolve()
     try:
         relative = out.relative_to(planning_root)
