@@ -25,6 +25,19 @@ def load_json(path: pathlib.Path) -> Any:
         raise SystemExit(f"cannot read {path}: {exc}") from exc
 
 
+def resolve_output_path(repo: pathlib.Path, output: pathlib.Path) -> pathlib.Path:
+    """Keep replaceable scaffolds below the repository's dedicated planning root."""
+    planning_root = (repo / ".planning").resolve()
+    out = (repo / output).resolve()
+    try:
+        relative = out.relative_to(planning_root)
+    except ValueError as exc:
+        raise SystemExit(f"output must resolve inside {planning_root}") from exc
+    if not relative.parts:
+        raise SystemExit(f"output must be a child of {planning_root}")
+    return out
+
+
 def topo_sort(selected: dict[str, dict]) -> list[dict]:
     indegree = {key: 0 for key in selected}
     children: dict[str, list[str]] = defaultdict(list)
@@ -170,7 +183,7 @@ def main() -> int:
         print("Dry run only. Add --scaffold to write repo-local planning files.", file=sys.stderr)
         return 0
 
-    out = repo / args.output
+    out = resolve_output_path(repo, pathlib.Path(args.output))
     if out.exists():
         if not args.force:
             raise SystemExit(f"output already exists: {out}; use --force to replace")
