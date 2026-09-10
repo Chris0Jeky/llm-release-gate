@@ -10,8 +10,8 @@ import lzma
 import tarfile
 from pathlib import Path
 
-EXPECTED_SHA256 = "9963e49e1c2368cb47df9f639a7f24dbd9fce6d64b0a455130c99323f64ebc89"
-EXPECTED_BYTES = 63304
+EXPECTED_SHA256 = "45b62b48a55701a7f642e6398fb1348191874b938f082cab5448dae28abd888e"
+EXPECTED_BYTES = 62888
 ARCHIVE_NAME = "llm-release-gate-acceleration-bundle.tar.xz"
 
 

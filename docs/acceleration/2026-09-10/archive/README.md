@@ -11,7 +11,7 @@ python assemble_bundle.py --extract
 
 Expected archive:
 
-- decoded bytes: `63304`
-- SHA-256: `9963e49e1c2368cb47df9f639a7f24dbd9fce6d64b0a455130c99323f64ebc89`
+- decoded bytes: `62888`
+- SHA-256: `45b62b48a55701a7f642e6398fb1348191874b938f082cab5448dae28abd888e`
 
 The archive contains the original comprehensive review, interactive decision deck, decision catalog and the self-contained acceleration bundle. Extraction never overwrites an existing destination unless `--force` is supplied.
