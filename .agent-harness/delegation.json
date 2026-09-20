@@ -1,0 +1,7 @@
+{
+  "schema_version": 1,
+  "muse": {
+    "worker_network": "proxy-only"
+  },
+  "notes": "Owner decision 2026-09-20 (claude-config HUMAN_TODO q-30): a Muse worker in this repository may use proxy-only sandbox network so a proving check that installs packages can be delegated (restricted network hangs rather than fails). Every other dial keeps the harness default (py -3 ~/.claude/tools/delegation_policy.py show --repo <this repo>); web stays off for investigate/worker; push, pull-request, merge and deploy are not declarable and remain undelegated."
+}
