@@ -10,6 +10,7 @@ gate must never silently pass.
 from __future__ import annotations
 
 import json
+import math
 import os
 from dataclasses import dataclass, field
 from typing import Any, Optional
@@ -41,6 +42,11 @@ def _is_number(value: Any) -> bool:
     isinstance(x, (int, float)) is True for True/False; a JSON boolean is never a
     numeric threshold or price and must be rejected, not silently used as 1/0."""
     return isinstance(value, (int, float)) and not isinstance(value, bool)
+
+
+def _is_finite_number(value: Any) -> bool:
+    """A JSON number that is also finite (rejects NaN and +/-Infinity)."""
+    return _is_number(value) and math.isfinite(value)
 
 
 # ---------------------------------------------------------------- dataset
@@ -214,6 +220,10 @@ def load_thresholds(path: str) -> Thresholds:
                 raise GateConfigError(
                     f"thresholds {path}: rule #{i} constraint '{key}' must be a number"
                 )
+            if not _is_finite_number(val):
+                raise GateConfigError(
+                    f"thresholds {path}: rule #{i} constraint '{key}' must be a finite number"
+                )
         level = entry.get("level", "fail")
         if level not in _LEVELS:
             raise GateConfigError(f"thresholds {path}: rule #{i} level must be one of {_LEVELS}")
@@ -253,15 +263,18 @@ def load_pricing(path: str) -> PricingTable:
     if not isinstance(models, dict):
         raise GateConfigError(f"pricing table {path}: 'models' must be an object")
     for model, entry in models.items():
-        if (
-            not isinstance(entry, dict)
-            or not _is_number(entry.get("input_per_mtok"))
-            or not _is_number(entry.get("output_per_mtok"))
-        ):
+        if not isinstance(entry, dict):
             raise GateConfigError(
                 f"pricing table {path}: model '{model}' needs numeric "
                 f"input_per_mtok and output_per_mtok"
             )
+        for key in ("input_per_mtok", "output_per_mtok"):
+            rate = entry.get(key)
+            if not _is_finite_number(rate) or rate < 0:
+                raise GateConfigError(
+                    f"pricing table {path}: model '{model}' field '{key}' must be "
+                    f"a finite, non-negative number"
+                )
     return PricingTable(
         version=str(version), currency=str(data.get("currency", "USD")),
         models=models, path=path, sha256=digest, raw=data,
