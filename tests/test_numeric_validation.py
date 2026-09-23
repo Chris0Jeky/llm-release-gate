@@ -13,7 +13,7 @@ from llm_release_gate.errors import GateConfigError
 from llm_release_gate.loading import load_pricing, load_thresholds
 
 
-@pytest.mark.parametrize("literal", ["NaN", "Infinity", "-Infinity"])
+@pytest.mark.parametrize("literal", ["NaN", "Infinity", "-Infinity", "1" + "0" * 400])
 def test_thresholds_nonfinite_constraint_rejected(tmp_path, literal):
     path = tmp_path / "thresholds.json"
     path.write_text(
@@ -35,7 +35,7 @@ def test_thresholds_negative_finite_constraint_loads(tmp_path):
 
 
 @pytest.mark.parametrize("field", ["input_per_mtok", "output_per_mtok"])
-@pytest.mark.parametrize("literal", ["NaN", "Infinity", "-Infinity", "-0.5"])
+@pytest.mark.parametrize("literal", ["NaN", "Infinity", "-Infinity", "-0.5", "1" + "0" * 400])
 def test_pricing_nonfinite_or_negative_rate_rejected(tmp_path, field, literal):
     other = "output_per_mtok" if field == "input_per_mtok" else "input_per_mtok"
     path = tmp_path / "pricing.json"

@@ -45,8 +45,14 @@ def _is_number(value: Any) -> bool:
 
 
 def _is_finite_number(value: Any) -> bool:
-    """A JSON number that is also finite (rejects NaN and +/-Infinity)."""
-    return _is_number(value) and math.isfinite(value)
+    """A JSON number that is also finite as a float (rejects NaN, +/-Infinity, and
+    integers too large to convert, which would overflow in the gate arithmetic)."""
+    if not _is_number(value):
+        return False
+    try:
+        return math.isfinite(float(value))
+    except OverflowError:
+        return False
 
 
 # ---------------------------------------------------------------- dataset
