@@ -234,6 +234,13 @@ def load_thresholds(path: str) -> Thresholds:
     for i, entry in enumerate(raw_rules):
         if not isinstance(entry, dict) or "metric" not in entry:
             raise GateConfigError(f"thresholds {path}: rule #{i} needs a 'metric'")
+        allowed_keys = {"metric", "level", "on_unavailable"} | set(_CONSTRAINT_KEYS)
+        unknown_keys = sorted(k for k in entry if k not in allowed_keys)
+        if unknown_keys:
+            raise GateConfigError(
+                f"thresholds {path}: rule #{i} ({entry['metric']}) has unknown key(s): "
+                f"{', '.join(unknown_keys)}; allowed keys: {', '.join(sorted(allowed_keys))}"
+            )
         constraints = {k: entry[k] for k in _CONSTRAINT_KEYS if k in entry}
         if not constraints:
             raise GateConfigError(
