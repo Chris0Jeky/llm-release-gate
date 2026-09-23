@@ -72,6 +72,18 @@ def _base_report(**overrides):
     return report
 
 
+def _item_cells(out: str, item_id: str) -> list[str]:
+    """The Baseline and Candidate <td> contents of one Items-table row.
+
+    Scoping assertions to the row keeps the rules table's own verdict badges
+    (Codex review of #27) from satisfying an item-cell assertion.
+    """
+    row = out[out.index(f"<tr><td><code>{item_id}</code></td>"):]
+    row = row[:row.index("</tr>")]
+    cells = row.split("<td>")[2:]
+    return [cell[: cell.rindex("</td>")] for cell in cells]
+
+
 # --- per-item cell: missing record (N/A) ---
 
 def test_missing_baseline_record_renders_na_badge():
@@ -79,9 +91,10 @@ def test_missing_baseline_record_renders_na_badge():
         {"id": "r1", "baseline": None, "candidate": _ok_record()},
     ])
     out = render_html(report)
-    assert '<span class="badge na">N/A</span>' in out
+    baseline, candidate = _item_cells(out, "r1")
+    assert baseline == '<span class="badge na">N/A</span>'
+    assert candidate == '<span class="badge pass">PASS</span>'
     assert out.count('<span class="badge na">N/A</span>') == 1
-    assert '<span class="badge pass">PASS</span>' in out
 
 
 def test_empty_items_table_renders_no_na_badge():
@@ -102,8 +115,9 @@ def test_provider_error_renders_error_badge_with_escaped_message():
          "candidate": _ok_record()},
     ])
     out = render_html(report)
-    assert '<span class="badge error">ERROR</span>' in out
-    assert _html.escape(msg) in out
+    baseline, _ = _item_cells(out, "r1")
+    assert baseline.startswith('<span class="badge error">ERROR</span>')
+    assert _html.escape(msg) in baseline
     assert msg not in out
     assert "<script>" not in out
 
@@ -126,15 +140,17 @@ def test_abstained_item_shows_pass_badge_and_abstained_note():
     })
     report = _base_report(items=[{"id": "r3", "baseline": record, "candidate": record}])
     out = render_html(report)
-    assert '<span class="badge pass">PASS</span>' in out
-    assert '<span class="note">abstained</span>' in out
+    for cell in _item_cells(out, "r3"):
+        assert cell.startswith('<span class="badge pass">PASS</span>')
+        assert '<span class="note">abstained</span>' in cell
 
 
 def test_non_abstained_item_shows_no_abstained_note():
     record = _ok_record(abstained=False)
     report = _base_report(items=[{"id": "r1", "baseline": record, "candidate": record}])
     out = render_html(report)
-    assert '<span class="badge pass">PASS</span>' in out
+    for cell in _item_cells(out, "r1"):
+        assert cell == '<span class="badge pass">PASS</span>'
     assert '<span class="note">abstained</span>' not in out
 
 
@@ -146,8 +162,9 @@ def test_failed_item_without_detail_falls_back_to_failed_word():
     })
     report = _base_report(items=[{"id": "r2", "baseline": _ok_record(), "candidate": record}])
     out = render_html(report)
-    assert '<span class="badge fail">FAIL</span>' in out
-    assert '<div class="note">quality.pass_rate: failed</div>' in out
+    _, candidate = _item_cells(out, "r2")
+    assert candidate.startswith('<span class="badge fail">FAIL</span>')
+    assert '<div class="note">quality.pass_rate: failed</div>' in candidate
 
 
 def test_inapplicable_score_does_not_render_as_failure():
@@ -156,7 +173,8 @@ def test_inapplicable_score_does_not_render_as_failure():
     })
     report = _base_report(items=[{"id": "r2", "baseline": _ok_record(), "candidate": record}])
     out = render_html(report)
-    assert '<span class="badge pass">PASS</span>' in out
+    _, candidate = _item_cells(out, "r2")
+    assert candidate == '<span class="badge pass">PASS</span>'
     assert "quality.pass_rate: failed" not in out
     assert '<span class="badge fail">FAIL</span>' not in out
 
