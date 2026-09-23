@@ -26,6 +26,8 @@ def _load_json_file(path: str, what: str) -> tuple[Any, str]:
         with open(path, "rb") as fh:
             source = fh.read()
         data = json.loads(source.decode("utf-8"))
+    except UnicodeDecodeError as exc:
+        raise GateConfigError(f"{what} file is not valid UTF-8: {path} ({exc})") from exc
     except json.JSONDecodeError as exc:
         raise GateConfigError(f"{what} file is not valid JSON: {path} ({exc})") from exc
     return data, json_source_sha256(source)
@@ -35,6 +37,17 @@ def _require(data: dict, key: str, path: str, what: str) -> Any:
     if key not in data:
         raise GateConfigError(f"{what} {path}: missing required key '{key}'")
     return data[key]
+
+
+def _optional_object(data: dict, key: str, where: str) -> dict:
+    """An optional object field: absent or null loads as {}; any other
+    non-object value is a configuration error naming the location."""
+    value = data.get(key, {})
+    if value is None:
+        return {}
+    if not isinstance(value, dict):
+        raise GateConfigError(f"{where} '{key}' must be an object")
+    return value
 
 
 def _is_number(value: Any) -> bool:
@@ -97,6 +110,11 @@ def load_dataset(path: str) -> Dataset:
         if item_id in seen:
             raise GateConfigError(f"dataset {path}: duplicate item id '{item_id}'")
         seen.add(item_id)
+        for _key in ("input", "expected"):
+            if _key in entry and not isinstance(entry[_key], dict):
+                raise GateConfigError(
+                    f"dataset {path}: item #{i} '{item_id}' field '{_key}' must be an object"
+                )
         items.append(
             DatasetItem(
                 id=item_id,
@@ -144,9 +162,9 @@ def load_run_config(path: str, role: str) -> RunConfig:
         )
     return RunConfig(
         name=str(name), provider=str(provider), model=str(model),
-        params=data.get("params", {}) or {},
+        params=_optional_object(data, "params", f"{role} config {path}"),
         prompt=prompt,
-        provider_options=data.get("provider_options", {}) or {},
+        provider_options=_optional_object(data, "provider_options", f"{role} config {path}"),
         path=path, sha256=digest, raw=data,
     )
 
@@ -171,9 +189,10 @@ def load_scorer_config(path: str) -> ScorerConfig:
         raise GateConfigError(f"scorer config {path}: 'scorers' must be a non-empty list")
     scorers = []
     for i, entry in enumerate(raw_scorers):
-        if not isinstance(entry, dict) or "type" not in entry:
-            raise GateConfigError(f"scorer config {path}: scorer #{i} needs a 'type'")
-        scorers.append({"type": entry["type"], "options": entry.get("options", {}) or {}})
+        scorer_type = entry.get("type") if isinstance(entry, dict) else None
+        if not isinstance(scorer_type, str) or not scorer_type:
+            raise GateConfigError(f"scorer config {path}: scorer #{i} 'type' must be a non-empty string")
+        scorers.append({"type": scorer_type, "options": _optional_object(entry, "options", f"scorer config {path}: scorer #{i}")})
     return ScorerConfig(scorers=scorers, path=path, sha256=digest, raw=data)
 
 
