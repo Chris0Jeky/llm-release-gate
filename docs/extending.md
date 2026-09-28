@@ -58,7 +58,8 @@ templates can reference) and `parse(text, item) -> ParsedOutput`. Set `name` and
 `version` whenever parsing conventions change — the version is recorded in run manifests,
 so a convention change is visible as a different run identity. Register in
 `adapters/__init__.py`. Keep output conventions (citation markers, abstention phrasing)
-in the adapter — scorers must stay convention-agnostic.
+in the adapter — scorers must stay convention-agnostic. Set `required_input`
+to the input keys your prompt needs as non-empty strings (missing one is exit 2).
 
 ## Adding a scorer
 

@@ -57,6 +57,9 @@ Registries are plain dicts populated at import; see `docs/extending.md`.
 `task` selects the adapter. Grounded tasks: `input.question` + `input.documents[{id,text}]`,
 `expected.quality.must_contain/must_not_contain`, `expected.must_cite`,
 `expected.should_abstain`. Extraction: `input.text`, `expected.fields`. The `expected` sub-fields above are type-checked at load and a wrong shape is a configuration error (exit 2).
+`input.question` (grounded tasks) and `input.text` (extraction) are required
+non-empty strings; an item missing its task's prompt input is a configuration
+error (exit 2), never an empty-prompt run. `input.documents` stays optional.
 
 **Run config** — `{"name", "provider", "model", "params", "prompt": {"system",
 "template"}, "provider_options"}`. Templates use `string.Template` syntax (`$question`,

@@ -30,6 +30,7 @@ math, provider failure, report honesty, exit codes — not line-coverage maximiz
 | `test_cli.py` | exit 0 (both green examples), exit 1 (red example, naming the regressions), exit 2 (missing file, bad rule, metric without scorer, missing/typo'd prompt template, malformed dataset, internal error); breached warn-level rule annotates but exits 0; `GITHUB_STEP_SUMMARY` / `GITHUB_OUTPUT` writing; `hash` and `run` subcommands |
 | `test_expected_shapes.py` | dataset `expected`-block shapes validated fail-closed at load (wrong `quality` / `must_cite` / `should_abstain` / `fields` shape → config error, exit 2); well-shaped and empty blocks accepted; bad shape exits 2 end-to-end |
 | `test_nonfinite_latency.py` | non-finite latency fails closed: NaN/±Infinity rejected as fixture config errors, `scalar_metric` reports them unavailable (never an available NaN), a NaN-latency candidate exits 2, and NaN aggregates stay unavailable so thresholds cannot pass on them |
+| `test_required_input.py` | items missing the task's prompt input (`input.question` for grounded tasks, `input.text` for extraction — absent, blank, or wrong-key) fail closed with exit 2 / `GateConfigError`; valid items build byte-identical prompts |
 
 The reproducibility tests also prove that changing only physical JSON source line endings
 (LF, CRLF, or lone CR) leaves the report, result hash, and fake-fixture identities unchanged.
