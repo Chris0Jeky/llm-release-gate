@@ -56,7 +56,7 @@ Registries are plain dicts populated at import; see `docs/extending.md`.
 **Dataset** — `{"name", "version", "task", "items": [{"id", "input", "expected"}]}`.
 `task` selects the adapter. Grounded tasks: `input.question` + `input.documents[{id,text}]`,
 `expected.quality.must_contain/must_not_contain`, `expected.must_cite`,
-`expected.should_abstain`. Extraction: `input.text`, `expected.fields`.
+`expected.should_abstain`. Extraction: `input.text`, `expected.fields`. The `expected` sub-fields above are type-checked at load and a wrong shape is a configuration error (exit 2).
 
 **Run config** — `{"name", "provider", "model", "params", "prompt": {"system",
 "template"}, "provider_options"}`. Templates use `string.Template` syntax (`$question`,

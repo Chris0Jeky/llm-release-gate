@@ -68,6 +68,48 @@ def _is_finite_number(value: Any) -> bool:
         return False
 
 
+def _validate_expected(expected: dict, path: str, i: int, item_id: str) -> None:
+    """Fail-closed shape check for a dataset item's ``expected`` block.
+
+    Only applied when a key is PRESENT; absent keys stay allowed and unknown
+    extra keys (e.g. ``_note``) stay allowed.
+    """
+    if "quality" in expected:
+        quality = expected["quality"]
+        if not isinstance(quality, dict):
+            raise GateConfigError(
+                f"dataset {path}: item #{i} '{item_id}' field 'expected.quality' must be an object"
+            )
+        for sub in ("must_contain", "must_not_contain"):
+            if sub in quality:
+                value = quality[sub]
+                if not isinstance(value, list) or any(
+                    not isinstance(elt, str) for elt in value
+                ):
+                    raise GateConfigError(
+                        f"dataset {path}: item #{i} '{item_id}' field "
+                        f"'expected.quality.{sub}' must be a list of strings"
+                    )
+    if "must_cite" in expected:
+        value = expected["must_cite"]
+        if not isinstance(value, list) or any(not isinstance(elt, str) for elt in value):
+            raise GateConfigError(
+                f"dataset {path}: item #{i} '{item_id}' field 'expected.must_cite' "
+                f"must be a list of strings"
+            )
+    if "should_abstain" in expected:
+        if not isinstance(expected["should_abstain"], bool):
+            raise GateConfigError(
+                f"dataset {path}: item #{i} '{item_id}' field 'expected.should_abstain' "
+                f"must be a boolean"
+            )
+    if "fields" in expected:
+        if not isinstance(expected["fields"], dict):
+            raise GateConfigError(
+                f"dataset {path}: item #{i} '{item_id}' field 'expected.fields' must be an object"
+            )
+
+
 # ---------------------------------------------------------------- dataset
 
 
@@ -115,6 +157,8 @@ def load_dataset(path: str) -> Dataset:
                 raise GateConfigError(
                     f"dataset {path}: item #{i} '{item_id}' field '{_key}' must be an object"
                 )
+        if isinstance(entry.get("expected", {}), dict):
+            _validate_expected(entry.get("expected", {}), path, i, item_id)
         items.append(
             DatasetItem(
                 id=item_id,
