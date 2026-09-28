@@ -20,6 +20,7 @@ _FENCE = re.compile(r"^\s*```(?:json)?\s*(.*?)\s*```\s*$", re.DOTALL)
 class ExtractionAdapter(TaskAdapter):
     name = "extraction"
     version = "1"
+    required_input = ("text",)
 
     def prompt_fields(self, item: DatasetItem) -> dict[str, str]:
         return {"text": str(item.input.get("text", ""))}

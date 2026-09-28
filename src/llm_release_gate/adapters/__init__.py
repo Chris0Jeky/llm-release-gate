@@ -33,6 +33,7 @@ class TaskAdapter(ABC):
 
     name: str = "abstract"
     version: str = "0"
+    required_input: tuple[str, ...] = ()
 
     @abstractmethod
     def prompt_fields(self, item: DatasetItem) -> dict[str, str]:
@@ -43,6 +44,13 @@ class TaskAdapter(ABC):
         """Interpret raw model text under this task's output conventions."""
 
     def build_request(self, item: DatasetItem, config: RunConfig) -> ProviderRequest:
+        for key in self.required_input:
+            value = item.input.get(key)
+            if not isinstance(value, str) or not value.strip():
+                raise GateConfigError(
+                    f"dataset item '{item.id}': task '{self.name}' requires "
+                    f"input.{key} as a non-empty string"
+                )
         fields = self.prompt_fields(item)
         template = Template(config.prompt.get("template", ""))
         # A typo'd placeholder would silently render literally and every request

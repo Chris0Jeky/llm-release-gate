@@ -46,6 +46,7 @@ def _parse_grounded(text: str) -> ParsedOutput:
 class RagAdapter(TaskAdapter):
     name = "rag"
     version = "2"  # v2: a citing reply is never an abstention
+    required_input = ("question",)
 
     def prompt_fields(self, item: DatasetItem) -> dict[str, str]:
         return {
@@ -60,6 +61,7 @@ class RagAdapter(TaskAdapter):
 class AssistantAdapter(TaskAdapter):
     name = "assistant"
     version = "2"  # v2: a citing reply is never an abstention
+    required_input = ("question",)
 
     def prompt_fields(self, item: DatasetItem) -> dict[str, str]:
         return {
