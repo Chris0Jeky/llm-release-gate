@@ -64,7 +64,7 @@ Registries are plain dicts populated at import; see `docs/extending.md`.
 
 **Fake provider fixtures** — `{"responses": {"<model>": {"<item_id>": {"text",
 "prompt_tokens?", "completion_tokens?", "latency_ms?", "error?"}}}}`. Omit token fields to
-simulate a provider that reports no usage; an `error` entry raises `ProviderError`.
+simulate a provider that reports no usage; an `error` entry raises `ProviderError`. `latency_ms`, when present, must be a finite non-negative number (NaN and ±Infinity are rejected as config errors).
 
 **Scorer config** — `{"scorers": [{"type", "options?"}]}`. Two scorers may not emit the
 same metric (validated at build time).

@@ -27,6 +27,7 @@ provider outage takes — so provider-failure behavior is testable offline.
 from __future__ import annotations
 
 import json
+import math
 import os
 
 from ..errors import GateConfigError, ProviderError
@@ -59,9 +60,10 @@ def _validate_fixtures(responses: dict, path: str) -> None:
             latency = entry.get("latency_ms")
             if latency is not None and (
                 not isinstance(latency, (int, float)) or isinstance(latency, bool) or latency < 0
+                or not math.isfinite(latency)
             ):
                 raise GateConfigError(
-                    f"fake provider {where}: latency_ms must be a non-negative number "
+                    f"fake provider {where}: latency_ms must be a finite non-negative number "
                     f"or omitted, got {latency!r}"
                 )
 

@@ -61,6 +61,11 @@ def scalar_metric(
     kind: str = "measured",
     note: Optional[str] = None,
 ) -> dict:
+    if isinstance(value, float) and not math.isfinite(value):
+        reason = f"non-finite value ({value}) reported"
+        if note:
+            reason = f"{reason}: {note}"
+        return unavailable_metric(unit, direction, reason)
     return {
         "value": value,
         "available": True,
