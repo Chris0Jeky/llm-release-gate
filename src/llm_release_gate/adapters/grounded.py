@@ -16,12 +16,24 @@ Output conventions (documented in docs/architecture.md, encoded once here):
 The two adapters share mechanics; they differ in the field name the prompt
 template sees ($documents vs $sources), matching how each app talks about its
 grounding material.
+
+Fail-closed documents contract: ``input.documents`` stays optional (absent
+renders as ""), but when present it must be a list of ``{"id", "text"}``
+objects with a non-empty string id and string text. A malformed entry raises
+GateConfigError naming the item id, mirroring TaskAdapter.required_input, so
+the gate exits 2 instead of escaping as KeyError/TypeError or silently running
+a garbage prompt. Per-item continuation stays reserved for provider runtime
+failures; a bad dataset is configuration, like a missing input.question. The
+dataset file path is unavailable at this layer (DatasetItem carries
+id/input/expected only; the path lives on Dataset), so the message names the
+item id in the required_input style.
 """
 
 from __future__ import annotations
 
 import re
 
+from ..errors import GateConfigError
 from ..loading import DatasetItem
 from . import ParsedOutput, TaskAdapter, register_adapter
 
@@ -32,8 +44,31 @@ ABSTENTION_PATTERN = re.compile(
 )
 
 
-def _render_documents(item: DatasetItem) -> str:
+def _render_documents(item: DatasetItem, task: str) -> str:
     docs = item.input.get("documents", [])
+    if not isinstance(docs, list):
+        raise GateConfigError(
+            f"dataset item '{item.id}': task '{task}' requires "
+            f"input.documents as a list of objects with string 'id' and 'text'"
+        )
+    for pos, doc in enumerate(docs):
+        if not isinstance(doc, dict):
+            raise GateConfigError(
+                f"dataset item '{item.id}': task '{task}' requires "
+                f"input.documents[{pos}] as an object with string 'id' and 'text'"
+            )
+        doc_id = doc.get("id")
+        text = doc.get("text")
+        if not isinstance(doc_id, str) or not doc_id:
+            raise GateConfigError(
+                f"dataset item '{item.id}': task '{task}' requires "
+                f"input.documents[{pos}].id as a non-empty string"
+            )
+        if not isinstance(text, str):
+            raise GateConfigError(
+                f"dataset item '{item.id}': task '{task}' requires "
+                f"input.documents[{pos}].text as a string"
+            )
     return "\n\n".join(f"[doc:{d['id']}]\n{d['text']}" for d in docs)
 
 
@@ -51,7 +86,7 @@ class RagAdapter(TaskAdapter):
     def prompt_fields(self, item: DatasetItem) -> dict[str, str]:
         return {
             "question": str(item.input.get("question", "")),
-            "documents": _render_documents(item),
+            "documents": _render_documents(item, self.name),
         }
 
     def parse(self, text: str, item: DatasetItem) -> ParsedOutput:
@@ -66,7 +101,7 @@ class AssistantAdapter(TaskAdapter):
     def prompt_fields(self, item: DatasetItem) -> dict[str, str]:
         return {
             "question": str(item.input.get("question", "")),
-            "sources": _render_documents(item),
+            "sources": _render_documents(item, self.name),
         }
 
     def parse(self, text: str, item: DatasetItem) -> ParsedOutput:
