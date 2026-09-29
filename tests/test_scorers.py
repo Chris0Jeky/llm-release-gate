@@ -117,6 +117,14 @@ def test_citation_validity_cases():
     assert "required sources not cited" in missed["citations.valid_rate"]["detail"]
 
 
+def test_citation_ghost_source_fails():
+    scorer = CitationScorer({})
+    item = grounded_item(should_abstain=False, must_cite=["d1"])
+    ghost = scorer.score_item(item, parse_rag("Fact. [doc:d9]", item))
+    assert ghost["citations.valid_rate"]["passed"] is False
+    assert "nonexistent" in ghost["citations.valid_rate"]["detail"]
+
+
 def test_hedged_fabrication_is_an_answer_not_an_abstention():
     # "I don't know ... but here's a cited claim" must count as answering:
     # false_answer_rate records the violation and the citation gets validated.
