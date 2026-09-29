@@ -21,6 +21,9 @@ def item_cost_usd(
     """Return (cost, None) or (None, reason-it-is-unavailable)."""
     if result.prompt_tokens is None or result.completion_tokens is None:
         return None, "provider reported no token usage"
+    for tokens in (result.prompt_tokens, result.completion_tokens):
+        if type(tokens) is not int or tokens < 0:
+            return None, "provider reported no token usage"
     if result.model not in pricing.models:
         if pricing.path is None:
             return None, "no pricing table supplied"
