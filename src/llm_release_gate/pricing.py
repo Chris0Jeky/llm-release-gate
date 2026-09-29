@@ -15,15 +15,21 @@ from .loading import PricingTable
 from .providers import ProviderResult
 
 
+def normalize_token_count(value: object) -> Optional[int]:
+    """Return a usable provider token count, or None when it is invalid."""
+    if type(value) is not int or value < 0:
+        return None
+    return value
+
+
 def item_cost_usd(
     result: ProviderResult, pricing: PricingTable
 ) -> tuple[Optional[float], Optional[str]]:
     """Return (cost, None) or (None, reason-it-is-unavailable)."""
-    if result.prompt_tokens is None or result.completion_tokens is None:
+    prompt_tokens = normalize_token_count(result.prompt_tokens)
+    completion_tokens = normalize_token_count(result.completion_tokens)
+    if prompt_tokens is None or completion_tokens is None:
         return None, "provider reported no token usage"
-    for tokens in (result.prompt_tokens, result.completion_tokens):
-        if type(tokens) is not int or tokens < 0:
-            return None, "provider reported no token usage"
     if result.model not in pricing.models:
         if pricing.path is None:
             return None, "no pricing table supplied"
@@ -33,7 +39,7 @@ def item_cost_usd(
         )
     rates = pricing.models[result.model]
     cost = (
-        result.prompt_tokens / 1_000_000 * rates["input_per_mtok"]
-        + result.completion_tokens / 1_000_000 * rates["output_per_mtok"]
+        prompt_tokens / 1_000_000 * rates["input_per_mtok"]
+        + completion_tokens / 1_000_000 * rates["output_per_mtok"]
     )
     return cost, None
