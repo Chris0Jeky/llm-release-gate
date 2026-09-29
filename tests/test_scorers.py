@@ -77,6 +77,17 @@ def test_field_match_exact_and_mismatch():
     assert unparsed["quality.pass_rate"]["passed"] is False
 
 
+def test_field_match_missing_key_fails():
+    scorer = FieldMatchScorer({})
+    adapter = ExtractionAdapter()
+    item = DatasetItem(id="x", input={"text": "t"},
+                       expected={"fields": {"vendor": "Acme", "total": 310}})
+    result = scorer.score_item(item, adapter.parse('{"vendor": "Acme"}', item))
+    assert result["quality.pass_rate"]["passed"] is False
+    assert "total" in result["quality.pass_rate"]["detail"]
+    assert "<missing>" in result["quality.pass_rate"]["detail"]
+
+
 # ------------------------------------------------------------- abstention
 
 def test_abstention_four_quadrants():
