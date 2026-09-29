@@ -13,10 +13,10 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 from .adapters import build_adapter
-from .errors import ProviderError
+from .errors import GateConfigError, ProviderError
 from .loading import Dataset, PricingTable, RunConfig
 from .metrics import LOWER, percentile, rate_metric, scalar_metric, unavailable_metric
-from .pricing import item_cost_usd
+from .pricing import item_cost_usd, normalize_token_count
 from .providers import build_provider
 from .scorers import Scorer, aggregate_scores
 
@@ -36,6 +36,10 @@ class ItemRecord:
     cost_usd: Optional[float] = None
     cost_note: Optional[str] = None
     scores: dict = field(default_factory=dict)  # metric_key -> item_result
+
+    def __post_init__(self) -> None:
+        self.prompt_tokens = normalize_token_count(self.prompt_tokens)
+        self.completion_tokens = normalize_token_count(self.completion_tokens)
 
     def to_dict(self) -> dict:
         return {
@@ -100,33 +104,48 @@ def run_config(
 
     records: list[ItemRecord] = []
     for item in dataset.items:
-        request = adapter.build_request(item, config)
         try:
-            result = provider.complete(request)
+            request = adapter.build_request(item, config)
+            try:
+                result = provider.complete(request)
+            except ProviderError as exc:
+                records.append(ItemRecord(item_id=item.id, status="error", error=str(exc)))
+                continue
+            parsed = adapter.parse(result.text, item)
+            cost, cost_note = item_cost_usd(result, pricing)
+            scores: dict = {}
+            for scorer in scorers:
+                scores.update(scorer.score_item(item, parsed))
+            records.append(
+                ItemRecord(
+                    item_id=item.id,
+                    status="ok",
+                    text=result.text,
+                    abstained=parsed.abstained,
+                    citations=parsed.citations,
+                    parse_error=parsed.parse_error,
+                    prompt_tokens=result.prompt_tokens,
+                    completion_tokens=result.completion_tokens,
+                    latency_ms=result.latency_ms,
+                    cost_usd=cost,
+                    cost_note=cost_note,
+                    scores=scores,
+                )
+            )
+        except GateConfigError:
+            raise
         except ProviderError as exc:
             records.append(ItemRecord(item_id=item.id, status="error", error=str(exc)))
             continue
-        parsed = adapter.parse(result.text, item)
-        cost, cost_note = item_cost_usd(result, pricing)
-        scores: dict = {}
-        for scorer in scorers:
-            scores.update(scorer.score_item(item, parsed))
-        records.append(
-            ItemRecord(
-                item_id=item.id,
-                status="ok",
-                text=result.text,
-                abstained=parsed.abstained,
-                citations=parsed.citations,
-                parse_error=parsed.parse_error,
-                prompt_tokens=result.prompt_tokens,
-                completion_tokens=result.completion_tokens,
-                latency_ms=result.latency_ms,
-                cost_usd=cost,
-                cost_note=cost_note,
-                scores=scores,
+        except Exception as exc:
+            records.append(
+                ItemRecord(
+                    item_id=item.id,
+                    status="error",
+                    error=f"{type(exc).__name__}: {exc}",
+                )
             )
-        )
+            continue
 
     aggregates = _aggregate(records, scorers)
     return RunResult(
