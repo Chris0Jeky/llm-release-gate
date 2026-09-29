@@ -68,6 +68,13 @@ def _is_finite_number(value: Any) -> bool:
         return False
 
 
+def _normalize_version(value: Any, path: str, what: str) -> str:
+    """Keep the released numeric-version coercion while rejecting other JSON types."""
+    if isinstance(value, bool) or not isinstance(value, (str, int, float)) or value == "":
+        raise GateConfigError(f"{what} {path}: 'version' must be a non-empty string or number")
+    return str(value)
+
+
 def _validate_expected(expected: dict, path: str, i: int, item_id: str) -> None:
     """Fail-closed shape check for a dataset item's ``expected`` block.
 
@@ -138,9 +145,10 @@ def load_dataset(path: str) -> Dataset:
     name = _require(data, "name", path, "dataset")
     version = _require(data, "version", path, "dataset")
     task = _require(data, "task", path, "dataset")
-    for _key, _value in (("name", name), ("version", version), ("task", task)):
+    for _key, _value in (("name", name), ("task", task)):
         if not isinstance(_value, str) or not _value:
             raise GateConfigError(f"dataset {path}: '{_key}' must be a non-empty string")
+    version = _normalize_version(version, path, "dataset")
     raw_items = _require(data, "items", path, "dataset")
     if not isinstance(raw_items, list) or not raw_items:
         raise GateConfigError(f"dataset {path}: 'items' must be a non-empty list")
@@ -350,8 +358,7 @@ def load_pricing(path: str) -> PricingTable:
     if not isinstance(data, dict):
         raise GateConfigError(f"pricing table {path}: top level must be a JSON object")
     version = _require(data, "version", path, "pricing table")
-    if not isinstance(version, str) or not version:
-        raise GateConfigError(f"pricing table {path}: 'version' must be a non-empty string")
+    version = _normalize_version(version, path, "pricing table")
     if "currency" not in data:
         currency = "USD"
     elif not isinstance(data["currency"], str) or not data["currency"]:

@@ -1,4 +1,4 @@
-"""Strict string-type validation at load (no silent str() coercion)."""
+"""String-type validation at load, with released numeric-version compatibility."""
 
 from __future__ import annotations
 
@@ -108,7 +108,11 @@ def test_thresholds_metric_wrong_type_rejected(tmp_path, bad):
         load_thresholds(path)
 
 
-def test_pricing_version_int_rejected(tmp_path):
+def test_numeric_versions_preserve_released_normalization(tmp_path):
+    dataset_path = _write(tmp_path / "dataset.json", _dataset_doc(version=1))
+    dataset = load_dataset(dataset_path)
+    assert dataset.version == "1"
+
     path = _write(
         tmp_path / "pricing.json",
         {
@@ -117,9 +121,8 @@ def test_pricing_version_int_rejected(tmp_path):
             "models": {"m": {"input_per_mtok": 1.0, "output_per_mtok": 2.0}},
         },
     )
-    with pytest.raises(GateConfigError) as excinfo:
-        load_pricing(path)
-    assert "pricing.json" in str(excinfo.value)
+    table = load_pricing(path)
+    assert table.version == "1"
 
 
 def test_pricing_currency_bool_rejected(tmp_path):
