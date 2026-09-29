@@ -2,7 +2,7 @@
 
 **T2 daily driver** · push free / merge free · single-runtime (Claude) · tier + flags:
 `.agent-harness/tier.json` · human decisions: `HUMAN_TODO.md`. Global laws are injected
-from `~/.claude/CLAUDE.md`; this file carries only what is true of *this* repo.
+from `~/.claude/rules/laws.md`; this file carries only what is true of *this* repo.
 
 ## What this is
 
@@ -34,8 +34,7 @@ llm_release_gate …`.
 
 ## Cold start and progression
 
-Read `~/.claude/ESTATE.md` before working an unfamiliar checkout, then read `AGENTS.md`, this
-file, `.agent-harness/tier.json`, `ORCHESTRATOR.md`, `HUMAN_TODO.md`, and `NEXT.md`. Refresh
+Read `~/.claude/ESTATE.md` before working an unfamiliar checkout, then this file, `.agent-harness/tier.json`, `ORCHESTRATOR.md`, `HUMAN_TODO.md`, and `NEXT.md`. Refresh
 `git status --short --branch`, worktree occupancy, `origin/main`, open PRs/issues/checks/review
 threads, and GitHub release/tag state. The ledger supplies the release/maintenance ladder and
 exact resume point; live evidence outranks it.
@@ -103,8 +102,9 @@ in the same commit, and README output blocks must match what the code actually p
 - Docs quote measured numbers (test count, demo result hashes, cost deltas). Change behavior
   → re-run and re-quote. A stale hash in `docs/testing.md` is a false measurement, not a typo.
 - `out/` is gitignored build output, not source.
-- The deny floor is deliberately **not** vendored here — it arrives from the global
-  PreToolUse hook; a repo copy would double-spawn against it.
+- No deny floor is vendored here, and none runs for Claude on DESKTOP-IHKOOJS (owner decisions of
+  2026-09-07/09-20; Kraspyon keeps a user-scope hook, which a repo copy would double-spawn
+  against). Act as if nothing catches an irreversible command.
 - **No secrets, ever.** No real provider exists yet; when one lands it reads keys from the
   environment only (`os.environ[...]`, `docs/extending.md`) — never a config file, never
   committed. That first adapter also triggers a `sensitive_data` flag review (`NEXT.md`).
