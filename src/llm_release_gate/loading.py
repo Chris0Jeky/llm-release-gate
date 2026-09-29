@@ -138,6 +138,9 @@ def load_dataset(path: str) -> Dataset:
     name = _require(data, "name", path, "dataset")
     version = _require(data, "version", path, "dataset")
     task = _require(data, "task", path, "dataset")
+    for _key, _value in (("name", name), ("version", version), ("task", task)):
+        if not isinstance(_value, str) or not _value:
+            raise GateConfigError(f"dataset {path}: '{_key}' must be a non-empty string")
     raw_items = _require(data, "items", path, "dataset")
     if not isinstance(raw_items, list) or not raw_items:
         raise GateConfigError(f"dataset {path}: 'items' must be a non-empty list")
@@ -167,7 +170,7 @@ def load_dataset(path: str) -> Dataset:
             )
         )
     return Dataset(
-        name=str(name), version=str(version), task=str(task),
+        name=name, version=version, task=task,
         items=items, path=path, sha256=digest, raw=data,
     )
 
@@ -192,9 +195,18 @@ def load_run_config(path: str, role: str) -> RunConfig:
     data, digest = _load_json_file(path, f"{role} config")
     if not isinstance(data, dict):
         raise GateConfigError(f"{role} config {path}: top level must be a JSON object")
-    name = data.get("name") or role
+    if "name" not in data:
+        name = role
+    else:
+        name = data["name"]
+        if not isinstance(name, str) or not name:
+            raise GateConfigError(f"{role} config {path}: 'name' must be a non-empty string")
     provider = _require(data, "provider", path, f"{role} config")
+    if not isinstance(provider, str) or not provider:
+        raise GateConfigError(f"{role} config {path}: 'provider' must be a non-empty string")
     model = _require(data, "model", path, f"{role} config")
+    if not isinstance(model, str) or not model:
+        raise GateConfigError(f"{role} config {path}: 'model' must be a non-empty string")
     prompt = data.get("prompt", {})
     if not isinstance(prompt, dict):
         raise GateConfigError(f"{role} config {path}: 'prompt' must be an object")
@@ -205,7 +217,7 @@ def load_run_config(path: str, role: str) -> RunConfig:
             f"see the task adapter for available fields)"
         )
     return RunConfig(
-        name=str(name), provider=str(provider), model=str(model),
+        name=name, provider=provider, model=model,
         params=_optional_object(data, "params", f"{role} config {path}"),
         prompt=prompt,
         provider_options=_optional_object(data, "provider_options", f"{role} config {path}"),
@@ -278,6 +290,9 @@ def load_thresholds(path: str) -> Thresholds:
     for i, entry in enumerate(raw_rules):
         if not isinstance(entry, dict) or "metric" not in entry:
             raise GateConfigError(f"thresholds {path}: rule #{i} needs a 'metric'")
+        metric = entry["metric"]
+        if not isinstance(metric, str) or not metric:
+            raise GateConfigError(f"thresholds {path}: rule #{i} 'metric' must be a non-empty string")
         allowed_keys = {"metric", "level", "on_unavailable"} | set(_CONSTRAINT_KEYS)
         unknown_keys = sorted(k for k in entry if k not in allowed_keys)
         if unknown_keys:
@@ -310,7 +325,7 @@ def load_thresholds(path: str) -> Thresholds:
             )
         rules.append(
             ThresholdRule(
-                metric=str(entry["metric"]), constraints=constraints,
+                metric=metric, constraints=constraints,
                 level=level, on_unavailable=on_unavailable,
             )
         )
@@ -335,6 +350,14 @@ def load_pricing(path: str) -> PricingTable:
     if not isinstance(data, dict):
         raise GateConfigError(f"pricing table {path}: top level must be a JSON object")
     version = _require(data, "version", path, "pricing table")
+    if not isinstance(version, str) or not version:
+        raise GateConfigError(f"pricing table {path}: 'version' must be a non-empty string")
+    if "currency" not in data:
+        currency = "USD"
+    elif not isinstance(data["currency"], str) or not data["currency"]:
+        raise GateConfigError(f"pricing table {path}: 'currency' must be a non-empty string")
+    else:
+        currency = data["currency"]
     models = _require(data, "models", path, "pricing table")
     if not isinstance(models, dict):
         raise GateConfigError(f"pricing table {path}: 'models' must be an object")
@@ -352,7 +375,7 @@ def load_pricing(path: str) -> PricingTable:
                     f"a finite, non-negative number"
                 )
     return PricingTable(
-        version=str(version), currency=str(data.get("currency", "USD")),
+        version=version, currency=currency,
         models=models, path=path, sha256=digest, raw=data,
     )
 
