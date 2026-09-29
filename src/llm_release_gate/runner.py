@@ -16,7 +16,7 @@ from .adapters import build_adapter
 from .errors import GateConfigError, ProviderError
 from .loading import Dataset, PricingTable, RunConfig
 from .metrics import LOWER, percentile, rate_metric, scalar_metric, unavailable_metric
-from .pricing import item_cost_usd
+from .pricing import item_cost_usd, normalize_token_count
 from .providers import build_provider
 from .scorers import Scorer, aggregate_scores
 
@@ -36,6 +36,10 @@ class ItemRecord:
     cost_usd: Optional[float] = None
     cost_note: Optional[str] = None
     scores: dict = field(default_factory=dict)  # metric_key -> item_result
+
+    def __post_init__(self) -> None:
+        self.prompt_tokens = normalize_token_count(self.prompt_tokens)
+        self.completion_tokens = normalize_token_count(self.completion_tokens)
 
     def to_dict(self) -> dict:
         return {
