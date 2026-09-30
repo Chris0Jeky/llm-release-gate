@@ -81,3 +81,51 @@ def test_valid_items_build_identical_prompts():
         DatasetItem(id="r1", input={"question": "q"}, expected={}), rag_cfg
     )
     assert req.prompt == "q"
+
+
+@pytest.mark.parametrize("bad", [12345, ["a"], None])
+def test_extraction_non_string_text_fails_closed(bad):
+    adapter = build_adapter("extraction")
+    item = DatasetItem(id="bad-text", input={"text": bad}, expected={})
+    with pytest.raises(GateConfigError) as excinfo:
+        adapter.prompt_fields(item)
+    message = str(excinfo.value)
+    assert "bad-text" in message
+    assert "input.text" in message
+    cfg = RunConfig(
+        name="c", provider="fake", model="m", params={},
+        prompt={"template": "$text"}, provider_options={},
+        path="", sha256="",
+    )
+    with pytest.raises(GateConfigError, match=r"input\.text"):
+        adapter.build_request(item, cfg)
+
+
+@pytest.mark.parametrize("task", ["rag", "assistant"])
+@pytest.mark.parametrize("bad", [12345, ["a"], None])
+def test_grounded_non_string_question_fails_closed(task, bad):
+    adapter = build_adapter(task)
+    item = DatasetItem(
+        id="bad-q", input={"question": bad, "documents": []}, expected={}
+    )
+    with pytest.raises(GateConfigError) as excinfo:
+        adapter.prompt_fields(item)
+    message = str(excinfo.value)
+    assert "bad-q" in message
+    assert "input.question" in message
+
+
+def test_prompt_fields_preserve_valid_strings():
+    extraction_fields = build_adapter("extraction").prompt_fields(
+        DatasetItem(id="x", input={"text": "hello"}, expected={})
+    )
+    assert extraction_fields == {"text": "hello"}
+    rag_fields = build_adapter("rag").prompt_fields(
+        DatasetItem(
+            id="r1",
+            input={"question": "q", "documents": [{"id": "s1", "text": "t"}]},
+            expected={},
+        )
+    )
+    assert rag_fields["question"] == "q"
+    assert "[doc:s1]" in rag_fields["documents"]
