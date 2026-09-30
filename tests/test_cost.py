@@ -9,6 +9,7 @@ from llm_release_gate.errors import GateConfigError
 from llm_release_gate.loading import PricingTable, load_pricing, no_pricing
 from llm_release_gate.pricing import item_cost_usd
 from llm_release_gate.providers import ProviderResult
+from llm_release_gate.runner import ItemRecord, _aggregate
 
 from conftest import GOOD_RESPONSE, gate_argv, write_json
 
@@ -123,3 +124,56 @@ def test_skip_policy_cost_flows_through_cli_and_renderers(mini_gate):
     assert "<td>cost.total_usd</td>" in html
     assert '<span class="badge skipped">SKIPPED</span>' in html
     assert "on_unavailable=skip" in html
+
+
+def test_partial_tokens_not_summed():
+    # Direct _aggregate regression test: when any answered item lacks
+    # tokens/cost, totals must stay unavailable (a partial sum would
+    # fabricate a lower total). Reverting the all-or-nothing guard to a
+    # partial sum makes this test fail.
+    partial = [
+        ItemRecord(
+            item_id="r1", status="ok",
+            prompt_tokens=100, completion_tokens=20, cost_usd=0.01,
+        ),
+        ItemRecord(
+            item_id="r2", status="ok",
+            prompt_tokens=110, completion_tokens=22, cost_usd=0.02,
+        ),
+        ItemRecord(
+            item_id="r3", status="ok",
+            cost_note="no token usage reported",
+        ),
+    ]
+    agg = _aggregate(partial, [])
+    tokens = agg["tokens.total"]
+    assert tokens["available"] is False
+    assert tokens["value"] is None
+    assert "1 of 3" in tokens["note"]
+    cost = agg["cost.total_usd"]
+    assert cost["available"] is False
+    assert cost["value"] is None
+    assert "1 of 3" in cost["note"]
+
+    # All-present happy path still sums exactly.
+    full = [
+        ItemRecord(
+            item_id="r1", status="ok",
+            prompt_tokens=100, completion_tokens=20, cost_usd=0.01,
+        ),
+        ItemRecord(
+            item_id="r2", status="ok",
+            prompt_tokens=110, completion_tokens=22, cost_usd=0.02,
+        ),
+        ItemRecord(
+            item_id="r3", status="ok",
+            prompt_tokens=90, completion_tokens=15, cost_usd=0.03,
+        ),
+    ]
+    full_agg = _aggregate(full, [])
+    full_tokens = full_agg["tokens.total"]
+    assert full_tokens["available"] is True
+    assert full_tokens["value"] == (100 + 20) + (110 + 22) + (90 + 15)
+    full_cost = full_agg["cost.total_usd"]
+    assert full_cost["available"] is True
+    assert full_cost["value"] == pytest.approx(0.01 + 0.02 + 0.03)
