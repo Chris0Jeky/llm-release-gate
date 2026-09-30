@@ -265,6 +265,18 @@ def test_json_schema_scorer_counts_parse_failures_as_invalid():
     assert r["schema.valid_rate"]["passed"] is False
 
 
+def test_json_schema_scorer_item_pass_and_fail():
+    scorer = JsonSchemaScorer({"schema": {"type": "object", "required": ["vendor"]}})
+    adapter = ExtractionAdapter()
+    item = DatasetItem(id="x", input={"text": "t"}, expected={})
+    ok = scorer.score_item(item, adapter.parse('{"vendor": "A"}', item))
+    assert ok["schema.valid_rate"]["passed"] is True
+    assert ok["schema.valid_rate"]["detail"] is None
+    missing = scorer.score_item(item, adapter.parse('{}', item))
+    assert missing["schema.valid_rate"]["passed"] is False
+    assert "missing required property" in missing["schema.valid_rate"]["detail"]
+
+
 def test_build_scorers_rejects_duplicate_metric_owner():
     config = ScorerConfig(
         scorers=[
