@@ -1,6 +1,11 @@
 """Fail-dominates-warn regression tests (gate verdict precedence)."""
 
-from llm_release_gate.gate import _escalate, build_report, evaluate_thresholds
+from llm_release_gate.gate import (
+    _check_constraint,
+    _escalate,
+    build_report,
+    evaluate_thresholds,
+)
 from llm_release_gate.loading import (
     Dataset,
     RunConfig,
@@ -79,3 +84,13 @@ def test_fail_dominates_warn():
     assert report["gate"]["verdict"] == "fail"
     assert report["gate"]["n_failed"] == 1
     assert report["gate"]["n_warned"] == 1
+
+
+def test_zero_baseline_pct():
+    breached, observed, _ = _check_constraint("max_increase_pct", 10, 0, 0.5)
+    assert breached is True
+    assert observed is None
+
+    breached, observed, _ = _check_constraint("max_increase_pct", 10, 0, 0)
+    assert breached is False
+    assert observed is None
