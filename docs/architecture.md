@@ -63,7 +63,8 @@ error (exit 2), never an empty-prompt run. `input.documents` stays optional.
 
 **Run config** — `{"name", "provider", "model", "params", "prompt": {"system",
 "template"}, "provider_options"}`. Templates use `string.Template` syntax (`$question`,
-`$documents`, `$sources`, `$text`) so JSON braces never collide.
+`$documents`, `$sources`, `$text`) so JSON braces never collide. `prompt.system`, when
+present, must be a string; omitting it or using an empty string is valid.
 
 **Fake provider fixtures** — `{"responses": {"<model>": {"<item_id>": {"text",
 "prompt_tokens?", "completion_tokens?", "latency_ms?", "error?"}}}}`. Omit token fields to
