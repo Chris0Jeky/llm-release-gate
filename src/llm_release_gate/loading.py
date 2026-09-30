@@ -224,6 +224,10 @@ def load_run_config(path: str, role: str) -> RunConfig:
             f"{role} config {path}: prompt.template is required (a $field template; "
             f"see the task adapter for available fields)"
         )
+    if "system" in prompt and not isinstance(prompt["system"], str):
+        raise GateConfigError(
+            f"{role} config {path}: prompt.system must be a string"
+        )
     return RunConfig(
         name=name, provider=provider, model=model,
         params=_optional_object(data, "params", f"{role} config {path}"),
