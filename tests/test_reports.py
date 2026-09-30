@@ -3,7 +3,10 @@ unavailable values explained."""
 
 import json
 
+import pytest
+
 from llm_release_gate.cli import main
+from llm_release_gate.metrics import percentile
 
 from llm_release_gate.metrics import rate_metric
 from conftest import GOOD_RESPONSE, gate_argv
@@ -79,6 +82,16 @@ def test_failed_items_show_detail_in_reports(mini_gate):
     detail = item["candidate"]["scores"]["quality.pass_rate"]["detail"]
     assert "fredville" in detail
     assert "missing expected terms" in html
+
+
+def test_percentile_nearest_rank_ceil():
+    # Nearest-rank: rank = ceil(p/100 * n), 1-indexed; ceil, not floor/round.
+    assert percentile([10, 20, 30, 40, 100], 95) == 100  # ceil(4.75) = 5th
+    assert percentile([1, 2, 3, 4], 25) == 1  # ceil(1.0) = 1st
+    assert percentile([10, 20, 30, 40, 50], 50) == 30  # ceil(2.5) = 3rd (median)
+    assert percentile([10, 20, 30, 40, 50], 100) == 50  # ceil(5.0) = 5th (edge)
+    with pytest.raises(ValueError):
+        percentile([], 95)
 
 
 def test_rate_metric_empty_cohort_is_unavailable():
