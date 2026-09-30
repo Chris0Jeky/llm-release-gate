@@ -1,5 +1,7 @@
 """Fail-dominates-warn regression tests (gate verdict precedence)."""
 
+import pytest
+from llm_release_gate.errors import GateConfigError
 from llm_release_gate.gate import (
     _check_constraint,
     _escalate,
@@ -84,6 +86,23 @@ def test_fail_dominates_warn():
     assert report["gate"]["verdict"] == "fail"
     assert report["gate"]["n_failed"] == 1
     assert report["gate"]["n_warned"] == 1
+
+
+def test_evaluate_thresholds_asymmetric_aggregates_config_error():
+    thresholds = Thresholds(rules=[ThresholdRule("quality.pass_rate", {"min_value": 0.5})], path="t.json", sha256="sha256:test")
+    good = rate_metric(8, 8, HIGHER)
+    err = rate_metric(0, 10, LOWER)
+    base_full = {"quality.pass_rate": good, "errors.error_rate": err}
+    cand_full = {"quality.pass_rate": good, "errors.error_rate": err}
+    with pytest.raises(GateConfigError) as exc1:
+        evaluate_thresholds(thresholds, base_full, {"errors.error_rate": err})
+    assert "quality.pass_rate" in str(exc1.value) and "candidate" in str(exc1.value)
+    with pytest.raises(GateConfigError) as exc2:
+        evaluate_thresholds(thresholds, {"errors.error_rate": err}, cand_full)
+    assert "quality.pass_rate" in str(exc2.value) and "baseline" in str(exc2.value)
+    malformed = {"value": 0.9}
+    with pytest.raises(GateConfigError):
+        evaluate_thresholds(thresholds, {"quality.pass_rate": malformed, "errors.error_rate": err}, cand_full)
 
 
 def test_unavailable_skip_yields_skipped():

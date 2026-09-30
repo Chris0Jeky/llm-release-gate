@@ -15,6 +15,12 @@ Semantics:
   never let a candidate pass on the strength of the items that succeeded.
 - A rule naming a metric that no configured scorer emits is a configuration
   error (exit 2), not a passing check.
+- A rule naming a metric present on only one side (asymmetric aggregates) is
+  a configuration error (exit 2) naming the metric and which side is missing;
+  partial aggregates are never silently treated as unavailable.
+- A malformed aggregate entry (non-dict, or a dict missing its "available" /
+  "value" keys, or marked available with a missing value) is a configuration
+  error (exit 2), never a KeyError.
 """
 
 from __future__ import annotations
@@ -86,17 +92,50 @@ def _check_constraint(
     raise GateConfigError(f"unknown constraint '{name}'")  # loading validates; belt+braces
 
 
+def _require_aggregate(metric: dict, rule_metric: str, side: str) -> dict:
+    if not isinstance(metric, dict):
+        raise GateConfigError(
+            f"aggregate for metric '{rule_metric}' on {side} side is malformed: "
+            f"expected a metric dict, got {type(metric).__name__}"
+        )
+    if "available" not in metric:
+        raise GateConfigError(
+            f"aggregate for metric '{rule_metric}' on {side} side is malformed: "
+            f"missing 'available' key"
+        )
+    return metric
+
+
+def _aggregate_value(metric: dict, rule_metric: str, side: str):
+    if "value" not in metric:
+        raise GateConfigError(
+            f"aggregate for metric '{rule_metric}' on {side} side is malformed: "
+            f"missing 'value' key"
+        )
+    value = metric.get("value")
+    if value is None:
+        raise GateConfigError(
+            f"aggregate for metric '{rule_metric}' on {side} side is malformed: "
+            f"marked available but 'value' is None"
+        )
+    return value
+
+
 def _evaluate_rule(rule: ThresholdRule, baseline_m: dict, candidate_m: dict, implicit: bool) -> dict:
     checks = []
     verdict = "pass"
     any_evaluated = False
+    _require_aggregate(candidate_m, rule.metric, "candidate")
+    _require_aggregate(baseline_m, rule.metric, "baseline")
     for name, threshold in rule.constraints.items():
         needs_baseline = name in _NEEDS_BASELINE
         missing = []
-        if not candidate_m["available"]:
-            missing.append(f"candidate: {candidate_m['note'] or 'unavailable'}")
-        if needs_baseline and not baseline_m["available"]:
-            missing.append(f"baseline: {baseline_m['note'] or 'unavailable'}")
+        _require_aggregate(candidate_m, rule.metric, "candidate")
+        _require_aggregate(baseline_m, rule.metric, "baseline")
+        if not candidate_m.get("available"):
+            missing.append(f"candidate: {candidate_m.get('note') or 'unavailable'}")
+        if needs_baseline and not baseline_m.get("available"):
+            missing.append(f"baseline: {baseline_m.get('note') or 'unavailable'}")
         if missing:
             checks.append({
                 "constraint": name,
@@ -113,8 +152,8 @@ def _evaluate_rule(rule: ThresholdRule, baseline_m: dict, candidate_m: dict, imp
         any_evaluated = True
         breached, observed, message = _check_constraint(
             name, threshold,
-            baseline_m["value"] if needs_baseline else None,
-            candidate_m["value"],
+            _aggregate_value(baseline_m, rule.metric, "baseline") if needs_baseline else None,
+            _aggregate_value(candidate_m, rule.metric, "candidate"),
         )
         checks.append({
             "constraint": name,
@@ -164,9 +203,21 @@ def evaluate_thresholds(
                 f"thresholds reference metric '{rule.metric}' which no configured scorer "
                 f"or system metric produces; available: {sorted(known)}"
             )
-        _reject_direction_mismatch(rule, candidate_aggs[rule.metric])
+        if rule.metric not in baseline_aggs:
+            raise GateConfigError(
+                f"thresholds reference metric '{rule.metric}' missing from baseline "
+                f"aggregates (present only on candidate side); available baseline: "
+                f"{sorted(baseline_aggs)}"
+            )
+        if rule.metric not in candidate_aggs:
+            raise GateConfigError(
+                f"thresholds reference metric '{rule.metric}' missing from candidate "
+                f"aggregates (present only on baseline side); available candidate: "
+                f"{sorted(candidate_aggs)}"
+            )
+        _reject_direction_mismatch(rule, candidate_aggs.get(rule.metric))
         verdicts.append(
-            _evaluate_rule(rule, baseline_aggs[rule.metric], candidate_aggs[rule.metric], implicit)
+            _evaluate_rule(rule, baseline_aggs.get(rule.metric), candidate_aggs.get(rule.metric), implicit)
         )
     return verdicts
 
@@ -175,6 +226,11 @@ def _reject_direction_mismatch(rule: ThresholdRule, metric: dict) -> None:
     """A drop-guard on a lower-is-better metric (or an increase-guard on a
     higher-is-better one) can never fire on a real regression — it would be a
     gate that silently passes everything. Fail loudly at config time instead."""
+    if not isinstance(metric, dict):
+        raise GateConfigError(
+            f"aggregate for metric '{rule.metric}' is malformed: expected a metric "
+            f"dict, got {type(metric).__name__}"
+        )
     direction = metric.get("direction")
     for name in rule.constraints:
         if name in _DROP_CONSTRAINTS and direction == "lower_better":
@@ -192,12 +248,22 @@ def _reject_direction_mismatch(rule: ThresholdRule, metric: dict) -> None:
 
 
 def _delta(baseline_m: dict, candidate_m: dict) -> dict | None:
-    if not (baseline_m["available"] and candidate_m["available"]):
+    if not isinstance(baseline_m, dict) or not isinstance(candidate_m, dict):
+        raise GateConfigError("metric aggregates for delta must be metric dicts")
+    if "available" not in baseline_m or "available" not in candidate_m:
+        raise GateConfigError("metric aggregates for delta are malformed: missing 'available' key")
+    if not (baseline_m.get("available") and candidate_m.get("available")):
         return None
-    abs_delta = candidate_m["value"] - baseline_m["value"]
+    if "value" not in baseline_m or "value" not in candidate_m:
+        raise GateConfigError("metric aggregates for delta are malformed: missing 'value' key")
+    baseline_value = baseline_m.get("value")
+    candidate_value = candidate_m.get("value")
+    if baseline_value is None or candidate_value is None:
+        raise GateConfigError("metric aggregates for delta are malformed: available value is None")
+    abs_delta = candidate_value - baseline_value
     pct = None
-    if baseline_m["value"] != 0:
-        pct = abs_delta / abs(baseline_m["value"]) * 100
+    if baseline_value != 0:
+        pct = abs_delta / abs(baseline_value) * 100
     return {"abs": abs_delta, "pct": pct}
 
 
