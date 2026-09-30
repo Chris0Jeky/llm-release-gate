@@ -2,7 +2,12 @@
 
 import pytest
 from llm_release_gate.errors import GateConfigError
-from llm_release_gate.gate import _escalate, build_report, evaluate_thresholds
+from llm_release_gate.gate import (
+    _check_constraint,
+    _escalate,
+    build_report,
+    evaluate_thresholds,
+)
 from llm_release_gate.loading import (
     Dataset,
     RunConfig,
@@ -11,7 +16,7 @@ from llm_release_gate.loading import (
     Thresholds,
     no_pricing,
 )
-from llm_release_gate.metrics import HIGHER, LOWER, rate_metric, scalar_metric
+from llm_release_gate.metrics import HIGHER, LOWER, rate_metric, scalar_metric, unavailable_metric
 from llm_release_gate.runner import RunResult
 
 
@@ -98,3 +103,41 @@ def test_evaluate_thresholds_asymmetric_aggregates_config_error():
     malformed = {"value": 0.9}
     with pytest.raises(GateConfigError):
         evaluate_thresholds(thresholds, {"quality.pass_rate": malformed, "errors.error_rate": err}, cand_full)
+
+
+def test_unavailable_skip_yields_skipped():
+    thresholds = Thresholds(
+        rules=[
+            ThresholdRule(
+                "quality.pass_rate",
+                {"max_drop_abs": 0.1, "min_value": 0.5},
+                on_unavailable="skip",
+            ),
+        ],
+        path="t.json",
+        sha256="sha256:test",
+    )
+    baseline_aggs = {
+        "quality.pass_rate": unavailable_metric("rate", HIGHER, "no applicable items"),
+        "errors.error_rate": rate_metric(0, 10, LOWER),
+    }
+    candidate_aggs = {
+        "quality.pass_rate": unavailable_metric("rate", HIGHER, "no applicable items"),
+        "errors.error_rate": rate_metric(0, 10, LOWER),
+    }
+
+    verdicts = evaluate_thresholds(thresholds, baseline_aggs, candidate_aggs)
+    rule = next(v for v in verdicts if v["metric"] == "quality.pass_rate")
+    assert rule["verdict"] == "skipped"
+    assert rule["checks"]
+    assert all(c["status"] == "unavailable" for c in rule["checks"])
+
+
+def test_zero_baseline_pct():
+    breached, observed, _ = _check_constraint("max_increase_pct", 10, 0, 0.5)
+    assert breached is True
+    assert observed is None
+
+    breached, observed, _ = _check_constraint("max_increase_pct", 10, 0, 0)
+    assert breached is False
+    assert observed is None
