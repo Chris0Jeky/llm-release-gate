@@ -8,6 +8,7 @@ import pytest
 from llm_release_gate.cli import main
 from llm_release_gate.metrics import percentile
 
+from llm_release_gate.metrics import rate_metric
 from conftest import GOOD_RESPONSE, gate_argv
 
 
@@ -91,3 +92,33 @@ def test_percentile_nearest_rank_ceil():
     assert percentile([10, 20, 30, 40, 50], 100) == 50  # ceil(5.0) = 5th (edge)
     with pytest.raises(ValueError):
         percentile([], 95)
+
+
+def test_rate_metric_empty_cohort_is_unavailable():
+    # Zero-denominator branch must stay unavailable (never 0.0 or "0/0").
+    m = rate_metric(0, 0, "higher_better")
+    assert m["value"] is None
+    assert m["available"] is False
+    assert m["numerator"] is None
+    assert m["denominator"] is None
+    assert m["n"] is None
+    assert m["note"] == "no applicable items"
+
+    # Negative/zero denominator variant stays unavailable as well.
+    m_neg = rate_metric(0, -1, "higher_better")
+    assert m_neg["value"] is None
+    assert m_neg["available"] is False
+    assert m_neg["numerator"] is None
+    assert m_neg["denominator"] is None
+    assert m_neg["n"] is None
+    assert m_neg["note"] == "no applicable items"
+
+
+def test_zero_applicable_rate_stays_unavailable():
+    m = rate_metric(0, 0, "higher_better")
+    assert m["value"] is None
+    assert m["available"] is False
+    assert m["numerator"] is None
+    assert m["denominator"] is None
+    assert m["n"] is None
+    assert m["note"] == "no applicable items"

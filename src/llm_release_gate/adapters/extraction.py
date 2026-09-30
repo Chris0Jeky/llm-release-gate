@@ -12,7 +12,7 @@ import json
 import re
 
 from ..loading import DatasetItem
-from . import ParsedOutput, TaskAdapter, register_adapter
+from . import ParsedOutput, TaskAdapter, register_adapter, require_prompt_str
 
 _FENCE = re.compile(r"^\s*```(?:json)?\s*(.*?)\s*```\s*$", re.DOTALL)
 
@@ -23,7 +23,7 @@ class ExtractionAdapter(TaskAdapter):
     required_input = ("text",)
 
     def prompt_fields(self, item: DatasetItem) -> dict[str, str]:
-        return {"text": str(item.input.get("text", ""))}
+        return {"text": require_prompt_str(item, self.name, "text")}
 
     def parse(self, text: str, item: DatasetItem) -> ParsedOutput:
         body = text

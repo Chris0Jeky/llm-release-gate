@@ -5,7 +5,8 @@ import pytest
 from llm_release_gate.adapters import build_adapter
 from llm_release_gate.adapters.extraction import ExtractionAdapter
 from llm_release_gate.errors import GateConfigError
-from llm_release_gate.loading import DatasetItem
+from llm_release_gate.loading import DatasetItem, ScorerConfig
+from llm_release_gate.scorers import build_scorers
 from llm_release_gate.scorers.abstention import AbstentionScorer
 from llm_release_gate.scorers.citations import CitationScorer
 from llm_release_gate.scorers.quality import FieldMatchScorer, KeywordQualityScorer
@@ -262,3 +263,16 @@ def test_json_schema_scorer_counts_parse_failures_as_invalid():
     item = DatasetItem(id="x", input={"text": "t"}, expected={})
     r = scorer.score_item(item, adapter.parse("not json", item))
     assert r["schema.valid_rate"]["passed"] is False
+
+
+def test_build_scorers_rejects_duplicate_metric_owner():
+    config = ScorerConfig(
+        scorers=[
+            {"type": "keyword_quality", "options": {}},
+            {"type": "keyword_quality", "options": {}},
+        ],
+        path="test",
+        sha256="test",
+    )
+    with pytest.raises(GateConfigError, match="exactly one owner"):
+        build_scorers(config)

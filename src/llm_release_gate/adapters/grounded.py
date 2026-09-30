@@ -35,7 +35,7 @@ import re
 
 from ..errors import GateConfigError
 from ..loading import DatasetItem
-from . import ParsedOutput, TaskAdapter, register_adapter
+from . import ParsedOutput, TaskAdapter, register_adapter, require_prompt_str
 
 CITATION_PATTERN = re.compile(r"\[doc:([^\]\s]+)\]")
 ABSTENTION_PATTERN = re.compile(
@@ -85,7 +85,7 @@ class RagAdapter(TaskAdapter):
 
     def prompt_fields(self, item: DatasetItem) -> dict[str, str]:
         return {
-            "question": str(item.input.get("question", "")),
+            "question": require_prompt_str(item, self.name, "question"),
             "documents": _render_documents(item, self.name),
         }
 
@@ -100,7 +100,7 @@ class AssistantAdapter(TaskAdapter):
 
     def prompt_fields(self, item: DatasetItem) -> dict[str, str]:
         return {
-            "question": str(item.input.get("question", "")),
+            "question": require_prompt_str(item, self.name, "question"),
             "sources": _render_documents(item, self.name),
         }
 

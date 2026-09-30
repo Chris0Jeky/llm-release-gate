@@ -27,6 +27,25 @@ class ParsedOutput:
     parse_error: Optional[str] = None    # set when structured parsing failed
 
 
+def require_prompt_str(item: DatasetItem, task: str, key: str) -> str:
+    """Raw prompt input as a string, fail-closed on wrong types.
+
+    Absent keys render as "" (requiredness stays enforced by
+    TaskAdapter.required_input in build_request). A present non-string value
+    is configuration — raise GateConfigError naming item id and field instead
+    of str()-coercing 12345/None into a queried prompt.
+    """
+    if key not in item.input:
+        return ""
+    value = item.input[key]
+    if not isinstance(value, str):
+        raise GateConfigError(
+            f"dataset item '{item.id}': task '{task}' requires "
+            f"input.{key} as a string"
+        )
+    return value
+
+
 class TaskAdapter(ABC):
     """Subclasses set ``name`` and ``version``; version lands in the manifest so a
     scoring-convention change is visible as a different run identity."""
