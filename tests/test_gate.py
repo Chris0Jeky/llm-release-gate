@@ -9,7 +9,7 @@ from llm_release_gate.loading import (
     Thresholds,
     no_pricing,
 )
-from llm_release_gate.metrics import HIGHER, LOWER, rate_metric, scalar_metric
+from llm_release_gate.metrics import HIGHER, LOWER, rate_metric, scalar_metric, unavailable_metric
 from llm_release_gate.runner import RunResult
 
 
@@ -79,3 +79,31 @@ def test_fail_dominates_warn():
     assert report["gate"]["verdict"] == "fail"
     assert report["gate"]["n_failed"] == 1
     assert report["gate"]["n_warned"] == 1
+
+
+def test_unavailable_skip_yields_skipped():
+    thresholds = Thresholds(
+        rules=[
+            ThresholdRule(
+                "quality.pass_rate",
+                {"max_drop_abs": 0.1, "min_value": 0.5},
+                on_unavailable="skip",
+            ),
+        ],
+        path="t.json",
+        sha256="sha256:test",
+    )
+    baseline_aggs = {
+        "quality.pass_rate": unavailable_metric("rate", HIGHER, "no applicable items"),
+        "errors.error_rate": rate_metric(0, 10, LOWER),
+    }
+    candidate_aggs = {
+        "quality.pass_rate": unavailable_metric("rate", HIGHER, "no applicable items"),
+        "errors.error_rate": rate_metric(0, 10, LOWER),
+    }
+
+    verdicts = evaluate_thresholds(thresholds, baseline_aggs, candidate_aggs)
+    rule = next(v for v in verdicts if v["metric"] == "quality.pass_rate")
+    assert rule["verdict"] == "skipped"
+    assert rule["checks"]
+    assert all(c["status"] == "unavailable" for c in rule["checks"])
