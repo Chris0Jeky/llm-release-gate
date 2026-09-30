@@ -99,3 +99,13 @@ def test_rate_metric_empty_cohort_is_unavailable():
     assert m_neg["denominator"] is None
     assert m_neg["n"] is None
     assert m_neg["note"] == "no applicable items"
+
+
+def test_zero_applicable_rate_stays_unavailable():
+    m = rate_metric(0, 0, "higher_better")
+    assert m["value"] is None
+    assert m["available"] is False
+    assert m["numerator"] is None
+    assert m["denominator"] is None
+    assert m["n"] is None
+    assert m["note"] == "no applicable items"
