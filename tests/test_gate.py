@@ -1,6 +1,11 @@
 """Fail-dominates-warn regression tests (gate verdict precedence)."""
 
-from llm_release_gate.gate import _escalate, build_report, evaluate_thresholds
+from llm_release_gate.gate import (
+    _check_constraint,
+    _escalate,
+    build_report,
+    evaluate_thresholds,
+)
 from llm_release_gate.loading import (
     Dataset,
     RunConfig,
@@ -107,3 +112,13 @@ def test_unavailable_skip_yields_skipped():
     assert rule["verdict"] == "skipped"
     assert rule["checks"]
     assert all(c["status"] == "unavailable" for c in rule["checks"])
+
+
+def test_zero_baseline_pct():
+    breached, observed, _ = _check_constraint("max_increase_pct", 10, 0, 0.5)
+    assert breached is True
+    assert observed is None
+
+    breached, observed, _ = _check_constraint("max_increase_pct", 10, 0, 0)
+    assert breached is False
+    assert observed is None
