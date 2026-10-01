@@ -115,6 +115,11 @@ class FakeProvider(Provider):
             raise ProviderError(
                 f"fixture for item '{request.item_id}' has neither 'text' nor 'error'"
             )
+        if not isinstance(entry["text"], str):
+            raise ProviderError(
+                f"fixture for item '{request.item_id}' under model "
+                f"'{request.model}' in {self.fixtures_ref} has non-string text"
+            )
         return ProviderResult(
             text=entry["text"],
             model=request.model,
