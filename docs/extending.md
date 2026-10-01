@@ -61,6 +61,13 @@ so a convention change is visible as a different run identity. Register in
 in the adapter — scorers must stay convention-agnostic. Set `required_input`
 to the input keys your prompt needs as non-empty strings (missing one is exit 2).
 
+Structured adapters set `ParsedOutput.has_json=True` when JSON parsing succeeds,
+including when the parsed value is JSON `null` (`json_obj=None`). Leave it false
+for unstructured output or failed parsing. Existing non-null `json_obj` values
+remain valid without the flag. Extraction adapter v2 and JSON-schema scorer v3
+distinguish parsed null from absent JSON; a null schema accepts only parsed null,
+while unstructured RAG/assistant output and parse errors still fail.
+
 ## Adding a scorer
 
 ```python

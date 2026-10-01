@@ -19,7 +19,7 @@ _FENCE = re.compile(r"^\s*```(?:json)?\s*(.*?)\s*```\s*$", re.DOTALL)
 
 class ExtractionAdapter(TaskAdapter):
     name = "extraction"
-    version = "1"
+    version = "2"  # v2: preserve successful parsing of JSON null
     required_input = ("text",)
 
     def prompt_fields(self, item: DatasetItem) -> dict[str, str]:
@@ -34,7 +34,7 @@ class ExtractionAdapter(TaskAdapter):
             obj = json.loads(body)
         except json.JSONDecodeError as exc:
             return ParsedOutput(text=text, parse_error=f"not valid JSON: {exc}")
-        return ParsedOutput(text=text, json_obj=obj)
+        return ParsedOutput(text=text, json_obj=obj, has_json=True)
 
 
 register_adapter("extraction", ExtractionAdapter)

@@ -111,7 +111,7 @@ def validate_against_schema(value, schema: dict, path: str = "$") -> list[str]:
 
 class JsonSchemaScorer(Scorer):
     name = "json_schema"
-    version = "2"  # v2: schema rejected up front if not fully enforceable; JSON-strict enum
+    version = "3"  # v3: distinguish parsed JSON null from absent JSON
     metrics = {
         "schema.valid_rate": {"direction": HIGHER, "kind": "rate", "mode": "pass_rate"},
     }
@@ -124,11 +124,18 @@ class JsonSchemaScorer(Scorer):
         validate_schema_definition(self.schema)
 
     def score_item(self, item: DatasetItem, output: ParsedOutput) -> dict[str, dict]:
-        if output.json_obj is None:
+        if output.parse_error:
             return {
                 "schema.valid_rate": item_result(
                     applicable=True, passed=False,
-                    detail=output.parse_error or "no JSON object in output",
+                    detail=output.parse_error,
+                )
+            }
+        if output.json_obj is None and not output.has_json:
+            return {
+                "schema.valid_rate": item_result(
+                    applicable=True, passed=False,
+                    detail="no JSON object in output",
                 )
             }
         violations = validate_against_schema(output.json_obj, self.schema)
