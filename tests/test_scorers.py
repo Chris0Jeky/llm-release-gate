@@ -277,6 +277,41 @@ def test_json_schema_scorer_item_pass_and_fail():
     assert "missing required property" in missing["schema.valid_rate"]["detail"]
 
 
+@pytest.mark.parametrize("text", ["null", "```json\nnull\n```"])
+def test_json_schema_scorer_passes_extraction_null_against_null_schema(text):
+    scorer = JsonSchemaScorer({"schema": {"type": "null"}})
+    adapter = ExtractionAdapter()
+    item = DatasetItem(id="x", input={"text": "t"}, expected={})
+    r = scorer.score_item(item, adapter.parse(text, item))
+    assert r["schema.valid_rate"]["passed"] is True
+
+
+def test_json_schema_scorer_fails_extraction_null_against_object_schema():
+    scorer = JsonSchemaScorer({"schema": {"type": "object"}})
+    adapter = ExtractionAdapter()
+    item = DatasetItem(id="x", input={"text": "t"}, expected={})
+    r = scorer.score_item(item, adapter.parse("null", item))
+    assert r["schema.valid_rate"]["passed"] is False
+
+
+@pytest.mark.parametrize("task", ["rag", "assistant"])
+def test_json_schema_scorer_rejects_unstructured_text_against_null_schema(task):
+    scorer = JsonSchemaScorer({"schema": {"type": "null"}})
+    item = grounded_item()
+    r = scorer.score_item(item, build_adapter(task).parse("null", item))
+    assert r["schema.valid_rate"]["passed"] is False
+    assert "no JSON" in r["schema.valid_rate"]["detail"]
+
+
+def test_json_schema_scorer_reports_parse_error_detail():
+    scorer = JsonSchemaScorer({"schema": {"type": "object"}})
+    adapter = ExtractionAdapter()
+    item = DatasetItem(id="x", input={"text": "t"}, expected={})
+    r = scorer.score_item(item, adapter.parse("{bad", item))
+    assert r["schema.valid_rate"]["passed"] is False
+    assert "not valid JSON" in r["schema.valid_rate"]["detail"]
+
+
 def test_build_scorers_rejects_duplicate_metric_owner():
     config = ScorerConfig(
         scorers=[

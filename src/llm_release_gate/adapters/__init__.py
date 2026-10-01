@@ -25,6 +25,7 @@ class ParsedOutput:
     abstained: bool = False
     json_obj: Optional[object] = None    # parsed JSON body (extraction tasks)
     parse_error: Optional[str] = None    # set when structured parsing failed
+    has_json: bool = False  # True only when json.loads succeeded (incl. JSON null)
 
 
 def require_prompt_str(item: DatasetItem, task: str, key: str) -> str:
