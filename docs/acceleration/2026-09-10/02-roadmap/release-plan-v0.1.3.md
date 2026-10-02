@@ -1,19 +1,19 @@
-# v0.1.3 trust-alignment release plan
+# v0.2.0 trust-alignment release plan
 
 ## Purpose
 
-Align the current source tree, package version, licence notices, Action reference and verified artefacts after the post-v0.1.2 changes. This is a trust release, not a feature release.
+Align the current source tree, package version, licence notices, Action reference and verified artefacts after the post-v0.1.2 changes. The v0.2.0 release preserves the strict input contract and declares the GPL transition.
 
-## Owner gate before tagging
+## Owner approval recorded
 
-- `D02` confirms whether to cut v0.1.3 now.
-- `D03` determines what happens to the floating `v0` tag and how the licence transition is communicated.
-- No agent may infer either decision from the existence of this plan.
+- On 2026-10-02 at 22:45:50 UTC, the owner explicitly approved publishing the current GPL release and moving `v0` to it.
+- The owner selected the strict input contract; numeric identifier restoration was cancelled before any restoration edit or commit.
+- The target is v0.2.0. This supersedes the proposed v0.1.3 plan; the historical filename remains stable. ADR-0006 records the specific exception to the default compatibility rule.
 
-## Recommended scope
+## Qualified release scope
 
-- Close issue #20 and update runtime/harness facts.
-- Land selected P1 verdict-integrity fixes that do not introduce the snapshot schema.
+- Include the merged input-diagnostic, finite-latency and measured-documentation fixes.
+- Preserve existing strict validation and fail-closed verdict/exit semantics.
 - Build and install-test source distribution and wheel, including all licence files.
 - Update version sources together: `pyproject.toml`, package `__version__`, measured examples/docs and release ledger.
 - Add a changelog/release note that distinguishes historical MIT v0.1.2 from current GPL source.
@@ -28,27 +28,26 @@ Align the current source tree, package version, licence notices, Action referenc
 6. Install the wheel into a clean environment and run `--version`, `hash`, one green gate and the deliberate-red gate.
 7. Run the Action self-test at the exact commit.
 8. Verify public-report disclosure and Markdown escaping tests.
-9. Create immutable annotated `v0.1.3` only after all exact-head checks are green.
+9. Create immutable annotated `v0.2.0` only after all exact-head checks are green.
 10. Publish release notes with the licence statement.
-11. Move `v0` only when the recorded `D03` option permits it; verify the peeled commit after movement.
+11. Move `v0` under the recorded owner approval; verify the peeled commit after movement.
 12. Verify the Marketplace listing resolves to the intended tag/version.
 13. Update `ORCHESTRATOR.md` and `HUMAN_TODO.md` with observed state, not anticipated state.
 
 ## Suggested release-note skeleton
 
 ```markdown
-## llm-release-gate v0.1.3 — trust alignment
+## llm-release-gate v0.2.0 — trust alignment
 
-- repairs repository agent permission rules;
 - hardens malformed-input and report-safety edge cases;
 - verifies wheel/sdist licence contents and clean-install behaviour;
-- keeps the comparison/report schema unchanged [or state the schema bump explicitly].
+- requires string names/models and keeps the existing strict validation and exit contract.
 
 ### Licence
 
-v0.1.3 is distributed under GPL-3.0-only. v0.1.2 and earlier copies released under MIT retain those previously granted rights. [State the selected `v0` strategy here.]
+v0.2.0 is distributed under GPL-3.0-only. v0.1.2 and earlier copies released under MIT retain those previously granted rights. Under the owner's explicit approval, `v0` now tracks the strict GPL v0.2.0 release. This is a deliberate licence and input-contract transition; pin immutable historical tags to retain historical behaviour.
 ```
 
 ## Rollback
 
-Immutable `v0.1.3` is never moved or deleted to hide a defect. If a defect is discovered, publish a later patch and move only a permitted floating compatibility tag after review.
+Immutable `v0.2.0` is never moved or deleted to hide a defect. If a defect is discovered, publish a later patch and move only a permitted floating compatibility tag after review.

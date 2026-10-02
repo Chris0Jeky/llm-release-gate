@@ -1,0 +1,28 @@
+# Changelog
+
+## 0.2.0 — 2026-10-02
+
+This GPL release aligns the current source, package identity and Action release.
+It retains the strict input contract; it does not restore legacy numeric name or
+model coercion. Dataset/config names and model IDs must be non-empty strings.
+Use `"123"` instead of `123` for a numeric-looking identifier. Invalid measured
+usage, latency, pricing or threshold policy still fails closed.
+
+- Contextual configuration diagnostics cover unreadable/non-regular files,
+  malformed JSON/UTF-8, parser limits, fixture paths and oversized latency values.
+- JSON-null schema scoring, report escaping and validation improvements since
+  v0.1.2 are included; scorer/adapter identities describe those changes.
+- Wheels and source archives include the GPL licence, relicensing record and
+  retained MIT attribution, with fresh offline installation smoke in CI.
+- Exit semantics remain 0 pass / 1 regression blocked / 2 could-not-run; the
+  offline provider, threshold behavior and zero runtime dependencies remain.
+
+### Licence and floating `v0`
+
+v0.2.0 is GPL-3.0-only. Immutable v0.1.2 and earlier MIT releases retain their
+previously granted rights and are never rewritten. The repository owner
+explicitly approved publishing the strict GPL release and moving `v0` to it on
+2026-10-02. This is a specific approved transition: floating `v0` consumers will
+receive GPL source and the strict identifiers. Pin an immutable historical MIT
+tag if that is the required licence, or pin an immutable current version/SHA.
+The release ledger records publication and tag verification separately.

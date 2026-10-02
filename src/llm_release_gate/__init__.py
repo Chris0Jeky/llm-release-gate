@@ -5,7 +5,7 @@ compares quality, abstention behavior, citation validity, schema validity,
 latency, token use and cost, and fails the CI check on a material regression.
 """
 
-__version__ = "0.1.2"
+__version__ = "0.2.0"
 
 TOOL_NAME = "llm-release-gate"
 

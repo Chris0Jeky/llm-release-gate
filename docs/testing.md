@@ -101,6 +101,32 @@ as action.yml. The outputs file received `verdict=fail`,
 `exit-code=1`, `result-hash=…`, report paths, `cli-exit=1`; summary file received the
 Markdown report; the enforce step maps `cli-exit=1` to a failed check.
 
+## Release package acceptance
+
+Build and check both archive types, then install the wheel into a fresh offline
+environment and verify its import, entrypoint, version, hash and green/red gates:
+
+```bash
+python -m pip install build
+python -m build --outdir dist
+python scripts/verify_dist.py dist --smoke
+```
+
+The v0.2.0 candidate on Windows Python 3.14.3 passed 353 tests in 1.17s on
+2026-10-02. Both green demos passed and the deliberate regression exited 1.
+Its report hashes are `34742875a2979772b7a3db015182e3a9e9753261273953dc286f6ab815072263`
+(rag), `042ad6047df0a03fb93f528c81c550964bb2a6081d0cfa25eeca36ed7e6e31d4`
+(extraction), and `432ccdf9bdb263f642d5607528f4b80cfe79bd15d0603fd543fa46ab78bd7b05`
+(red). The tool version is part of each report; these hashes differ from the
+historical 0.1.2 measurements above. Exact release receipts live in the ledger.
+
+The verifier compares `LICENSE`, `RELICENSING.md` and `LICENSES/MIT.txt` bytes
+against the checkout in both archives, checks package metadata and zero runtime
+dependencies, and runs the installed wheel with isolated Python (`-I`). CI's
+`package` job runs the same acceptance and preserves the archives. The v0.2.0
+candidate fixes a reproduced wheel omission: `MANIFEST.in` supplied the sdist
+notices but did not put all notices in the wheel; explicit `license-files` does.
+
 ## Adding tests
 
 Break one behavior per test. Prefer driving through `cli.main([...])` (in-process, fast,

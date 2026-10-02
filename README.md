@@ -103,8 +103,9 @@ alone), each at level `fail` or `warn`. See `examples/*/thresholds.json`.
 
 The Action is publicly available in the
 [GitHub Marketplace](https://github.com/marketplace/actions/llm-release-gate). Use
-`Chris0Jeky/llm-release-gate@v0`: this compatibility reference currently resolves to the reviewed
-[`v0.1.2` release](https://github.com/Chris0Jeky/llm-release-gate/releases/tag/v0.1.2). Use
+`Chris0Jeky/llm-release-gate@v0`: the owner-approved v0.2.0 transition moves this
+floating reference to GPL source with strict identifiers. See the
+[release ledger](ORCHESTRATOR.md) for the verified publication state. Use
 `uses: ./` only from a workflow inside a checkout of this repository.
 
 ```yaml
@@ -137,6 +138,12 @@ self-tests the Action on both the green and the red example.
 `@v0` is the compatibility reference for the latest verified 0.x release. Pin a full commit
 SHA when an immutable supply-chain reference is required. The repository never moves `v0`
 outside a reviewed 0.x release.
+
+**v0.2.0 licence/input transition:** current source is GPL-3.0-only; dataset/config
+names and model IDs must be non-empty strings (`"123"`, rather than `123`). The
+owner explicitly approved this strict GPL release and the `v0` transition.
+Immutable v0.1.2 and earlier MIT releases retain their previously granted rights.
+Pin those historical tags if MIT is required. See [CHANGELOG.md](CHANGELOG.md).
 
 ## Examples
 

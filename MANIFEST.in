@@ -1,3 +1,4 @@
 include LICENSE
 include RELICENSING.md
+include scripts/verify_dist.py
 include LICENSES/MIT.txt

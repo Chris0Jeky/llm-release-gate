@@ -11,7 +11,7 @@ inputs (dataset, baseline config, candidate config, scorers, thresholds — plus
 pricing table) it runs baseline and candidate over the golden dataset, scores both, writes
 `report.{json,md,html}` + `manifest.json`, and exits **0 pass / 1 regression blocked /
 2 could-not-run**. Zero runtime dependencies; offline by default — the `fake` provider
-replays committed fixtures, so tests, demos and CI need no API key. Package version is v0.1.2;
+replays committed fixtures, so tests, demos and CI need no API key. Package version is v0.2.0;
 the current public-release stage lives in `ORCHESTRATOR.md`.
 
 ## Run it (measured 2026-10-02, Windows, Python 3.14.3, pytest 9.0.3)
@@ -92,6 +92,11 @@ only — deterministic replay keyed by model + item_id), `adapters/` (`rag`, `as
 6. **One owner per metric.** Scorers declare direction/kind/mode and skip inapplicable items
    rather than passing them.
 7. **Zero runtime dependencies.** A new runtime dep needs a NEXT.md-level justification.
+
+For v0.2.0 only, the owner explicitly selected strict identifiers and approved
+publishing GPL source and moving `v0` to it on 2026-10-02. This specific transition
+is an exception to the default breaking-change/major-version rule above; see
+ADR 0006 and `HUMAN_TODO.md`. It does not authorize future unattended tag moves.
 
 New behavior lands with the test that pins it; schema/metric/command changes update the docs
 in the same commit, and README output blocks must match what the code actually prints.
