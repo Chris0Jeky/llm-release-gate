@@ -53,8 +53,8 @@ Registries are plain dicts populated at import; see `docs/extending.md`.
 
 ## Input schemas (by example)
 
-Input JSON and fake-provider fixtures are read as UTF-8. Missing or unreadable
-files, invalid encoding or JSON, and interpreter JSON numeric/nesting limits
+Input JSON and fake-provider fixtures are read from regular files as UTF-8.
+Missing, unreadable or non-regular files, invalid encoding or JSON, and interpreter JSON numeric/nesting limits
 produce a configuration error naming the input and path (exit 2). Fixtures use
 the same reader and source hashing as the other inputs; valid inputs retain
 their existing hashes. Files are still read whole, with no application size cap.
