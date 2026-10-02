@@ -16,7 +16,15 @@ repository policy; live evidence always wins.
   [GitHub Marketplace listing](https://github.com/marketplace/actions/llm-release-gate) is live
   at `v0.1.2` with **Continuous integration** and **Code quality** categories.
 - **Decisions:** q-1 and q-3 are complete; q-2 is deliberately deferred; q-4 waits for two
-  real users.
+  real users. The next Action release is blocked on q-5 (existing D02/D03 release/licence
+  choice) and q-6 (released input compatibility), reconciled on 2026-10-02.
+- **Next release evidence:** remote `v0.1.2`/`v0` and the latest GitHub release still
+  resolve to MIT `5c36235`; current GPL source still reports `0.1.2`. Numeric names/model
+  IDs accepted by the public release are rejected by current loaders; synthetic full-gate
+  reproduction and the contract/version decision are tracked in
+  [#65](https://github.com/Chris0Jeky/llm-release-gate/issues/65). No new release or tag
+  movement is verified. Package/clean-install acceptance for a future release head remains
+  outstanding; maintenance CI does not supply that release acceptance.
 - **Known low item:** issue #7's stale proving-check count was corrected and closed by PR #9;
   it never blocked the release.
 - **Release proof:** the prior 227-character Action description was corrected to 122 characters;
@@ -58,6 +66,7 @@ repository policy; live evidence always wins.
 | Repository identity | COMPLETE | Keep all canonical references on `Chris0Jeky/llm-release-gate`. | None. |
 | Release readiness | COMPLETE | PR #10 merged after exact-head local/hosted checks and independent review. | None. |
 | Public Action releases | COMPLETE | `v0.1.0` and `v0.1.1` remain immutable; `v0.1.2` and `v0` both resolve to reviewed `5c36235`; the release is public. | None. |
+| Next Action release | BLOCKED | Resolve #65, record q-5/q-6, then follow the exact-head release checklist in the acceleration bundle. | Existing D02/D03 licence/floating-tag strategy and input-contract/version choice. |
 | Marketplace | COMPLETE | Public listing is live at `v0.1.2` with **Continuous integration** and **Code quality** categories. | None. |
 | PyPI | DORMANT | Do nothing until a real `pip install` request; then re-open q-2 and use Trusted Publishing. | Publishing identity/account configuration. |
 | Real provider | DORMANT | Do nothing until two real users request live-model runs; then implement only the requested provider. | Provider, secret path, and `sensitive_data` review. |
@@ -92,8 +101,11 @@ from this repository or this session. This repo's local tier declaration is the 
 
 ## Resume
 
-**Exact resume point:** `v0.1.2` is the current verified `v0` Action release and its Marketplace
-listing is live. On a cold start, first reconcile live PR/CI/review/tag/release/listing state.
-Then work only a verified failure, confirmed defect, or an observable `NEXT.md` trigger; if none
+**Exact resume point:** `v0.1.2` remains the published `v0` Action release. The next release is
+blocked on the existing D02/D03 choice and #65's input compatibility decision; record q-5/q-6
+before preparing a versioned publication. First reconcile live PR/CI/review/tag/release/listing
+state, then finish qualified maintenance PRs and follow the release checklist after those
+decisions are recorded. Otherwise work only a verified failure, confirmed defect, or an
+observable `NEXT.md` trigger; if none
 exists, stop with this checkpoint rather than inventing PyPI, provider, scheduler, hook, or
 hosted-platform work.
