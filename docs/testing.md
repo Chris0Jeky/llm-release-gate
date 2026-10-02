@@ -79,9 +79,16 @@ OK: regression correctly blocked (exit 1)
 The 2026-10-02 run used a task-owned virtual environment, reused installed pytest,
 disabled unrelated global pytest plugins (`PYTEST_DISABLE_PLUGIN_AUTOLOAD=1`),
 and set a task-owned pytest `--basetemp`. `PYTHONPATH=src` pinned the worktree's
-source for both tests and demos. On Windows PowerShell, the exact Make invocation
-was `make ci PY=python 'SHELL=C:/Program Files/Git/bin/bash.exe'`. Without this
-shell override, Windows Make may misinterpret the deliberate red-demo recipe.
+source for both tests and demos. On Windows PowerShell, the source-pinned Make
+invocation was:
+
+```powershell
+$env:PYTHONPATH='src'
+make ci PY=python 'SHELL=C:/Program Files/Git/bin/bash.exe'
+```
+
+Without this shell override, Windows Make may misinterpret the deliberate
+red-demo recipe.
 
 Reproducibility spot-check: red-demo reports from three separate task worktrees
 (main and the two diagnostic branches) were byte-identical and shared the hash
