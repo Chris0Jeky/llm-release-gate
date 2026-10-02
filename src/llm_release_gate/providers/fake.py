@@ -26,12 +26,10 @@ provider outage takes — so provider-failure behavior is testable offline.
 
 from __future__ import annotations
 
-import json
-import math
 import os
 
 from ..errors import GateConfigError, ProviderError
-from ..hashing import json_source_sha256
+from ..loading import _is_finite_number, _load_json_file
 from . import Provider, ProviderRequest, ProviderResult, register_provider
 
 
@@ -59,8 +57,7 @@ def _validate_fixtures(responses: dict, path: str) -> None:
                     )
             latency = entry.get("latency_ms")
             if latency is not None and (
-                not isinstance(latency, (int, float)) or isinstance(latency, bool) or latency < 0
-                or not math.isfinite(latency)
+                not _is_finite_number(latency) or latency < 0
             ):
                 raise GateConfigError(
                     f"fake provider {where}: latency_ms must be a finite non-negative number "
@@ -73,19 +70,12 @@ class FakeProvider(Provider):
 
     def __init__(self, options: dict, base_dir: str):
         fixtures = options.get("fixtures")
-        if not fixtures:
+        if not isinstance(fixtures, str) or not fixtures:
             raise GateConfigError(
-                "fake provider requires provider_options.fixtures (path to fixture JSON)"
+                "fake provider requires provider_options.fixtures (non-empty string path to fixture JSON)"
             )
         path = fixtures if os.path.isabs(fixtures) else os.path.join(base_dir, fixtures)
-        if not os.path.isfile(path):
-            raise GateConfigError(f"fake provider fixture file not found: {path}")
-        try:
-            with open(path, "rb") as fh:
-                source = fh.read()
-            data = json.loads(source.decode("utf-8"))
-        except json.JSONDecodeError as exc:
-            raise GateConfigError(f"fake provider fixtures not valid JSON: {path} ({exc})") from exc
+        data, digest = _load_json_file(path, "fake provider fixture")
         if not isinstance(data, dict) or not isinstance(data.get("responses"), dict):
             raise GateConfigError(f"fake provider fixtures {path}: expected {{'responses': {{...}}}}")
         _validate_fixtures(data["responses"], path)
@@ -94,7 +84,7 @@ class FakeProvider(Provider):
         # the resolved absolute path, it is stable across checkout locations, so it is
         # safe to surface in per-item error messages that land in report.json.
         self.fixtures_ref = fixtures
-        self.fixtures_sha256 = json_source_sha256(source)
+        self.fixtures_sha256 = digest
         self.responses: dict = data["responses"]
 
     def complete(self, request: ProviderRequest) -> ProviderResult:

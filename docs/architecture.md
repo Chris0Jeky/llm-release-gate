@@ -53,6 +53,13 @@ Registries are plain dicts populated at import; see `docs/extending.md`.
 
 ## Input schemas (by example)
 
+Input JSON and fake-provider fixtures are read from regular files as UTF-8.
+Missing, unreadable or non-regular files, invalid encoding or JSON, and interpreter
+JSON numeric/nesting limits produce a configuration error naming the input and
+path (exit 2). Fixtures use
+the same reader and source hashing as the other inputs; valid inputs retain
+their existing hashes. Files are still read whole, with no application size cap.
+
 **Dataset** — `{"name", "version", "task", "items": [{"id", "input", "expected"}]}`.
 `task` selects the adapter. Grounded tasks: `input.question` + `input.documents[{id,text}]`,
 `expected.quality.must_contain/must_not_contain`, `expected.must_cite`,
@@ -65,6 +72,8 @@ error (exit 2), never an empty-prompt run. `input.documents` stays optional.
 "template"}, "provider_options"}`. Templates use `string.Template` syntax (`$question`,
 `$documents`, `$sources`, `$text`) so JSON braces never collide. `prompt.system`, when
 present, must be a string; omitting it or using an empty string is valid.
+For the fake provider, `provider_options.fixtures` must be a non-empty string
+path, resolved relative to the run config's directory.
 
 **Fake provider fixtures** — `{"responses": {"<model>": {"<item_id>": {"text",
 "prompt_tokens?", "completion_tokens?", "latency_ms?", "error?"}}}}`. Omit token fields to

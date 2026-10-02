@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 import math
 import os
+import stat
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
@@ -19,17 +20,38 @@ from .errors import GateConfigError
 from .hashing import json_source_sha256
 
 
-def _load_json_file(path: str, what: str) -> tuple[Any, str]:
-    if not os.path.isfile(path):
-        raise GateConfigError(f"{what} file not found: {path}")
+def _open_regular_file(path: str, flags: int) -> int:
+    # On POSIX, opening a FIFO can block before fstat can inspect it. Nonblocking
+    # open has no effect on regular files; inspect the actual descriptor so a
+    # symlink or path replacement cannot bypass the check.
+    fd = os.open(path, flags | getattr(os, "O_NONBLOCK", 0))
     try:
-        with open(path, "rb") as fh:
+        if not stat.S_ISREG(os.fstat(fd).st_mode):
+            raise ValueError("expected a regular file")
+    except BaseException:
+        os.close(fd)
+        raise
+    return fd
+
+
+def _load_json_file(path: str, what: str) -> tuple[Any, str]:
+    try:
+        with open(path, "rb", opener=_open_regular_file) as fh:
             source = fh.read()
+    except FileNotFoundError as exc:
+        raise GateConfigError(f"{what} file not found: {path}") from exc
+    except (OSError, ValueError) as exc:
+        raise GateConfigError(f"{what} file could not be read: {path} ({exc})") from exc
+    try:
         data = json.loads(source.decode("utf-8"))
     except UnicodeDecodeError as exc:
         raise GateConfigError(f"{what} file is not valid UTF-8: {path} ({exc})") from exc
     except json.JSONDecodeError as exc:
         raise GateConfigError(f"{what} file is not valid JSON: {path} ({exc})") from exc
+    except ValueError as exc:
+        raise GateConfigError(f"{what} file could not be parsed as JSON: {path} ({exc})") from exc
+    except RecursionError as exc:
+        raise GateConfigError(f"{what} file exceeds JSON nesting limit: {path} ({exc})") from exc
     return data, json_source_sha256(source)
 
 
