@@ -14,23 +14,27 @@ pricing table) it runs baseline and candidate over the golden dataset, scores bo
 replays committed fixtures, so tests, demos and CI need no API key. Package version is v0.1.2;
 the current public-release stage lives in `ORCHESTRATOR.md`.
 
-## Run it (measured 2026-08-02, Windows, Python 3.14.3)
+## Run it (measured 2026-10-02, Windows, Python 3.14.3, pytest 9.0.3)
+
+Measurement base: main `898b9ecafe67639b55de668b3624f6720a00755a`. Counts and
+timings describe that snapshot; see `docs/testing.md` for the pinned setup.
 
 | Goal | Command | Result here |
 |---|---|---|
 | dev install | `make install` (`pip install -e ".[dev]"`) | — |
-| full suite | `python -m pytest` | `84 passed in 0.53s` |
+| full suite | `python -m pytest` | `324 passed in 1.16s` |
 | green demos | `make demo-green` | both gates PASS, exit 0 |
 | red demo | `make demo-red` | gate FAIL, exit 1 (that is success) |
-| what CI runs | `make ci` | test + demo-green + demo-red |
+| what CI runs | `make ci PY=python` | tests + both green demos + red demo; 2.36s total |
 
-`make` resolves under Git Bash on this box; without it, copy the exact
-`python -m llm_release_gate gate --dataset … --out …` argument list out of the Makefile.
+On Windows, use Git-for-Windows Bash as Make's shell; `docs/testing.md` records
+the exact shell override and temporary-directory setup. Without Make, copy the
+exact CLI arguments out of the Makefile.
 
-**Worktree trap (measured).** The editable install resolves to the MAIN checkout, so a bare
-`python -m pytest` inside a linked worktree silently tests the *other* tree's source. In a
-worktree, prefix everything: `PYTHONPATH=src python -m pytest`, `PYTHONPATH=src python -m
-llm_release_gate …`.
+**Worktree trap.** An editable install may resolve to a different checkout.
+Pytest's repository config already pins `src`; pin source explicitly for all
+worktree commands: `PYTHONPATH=src python -m pytest` and `PYTHONPATH=src python -m
+llm_release_gate ...`.
 
 ## Cold start and progression
 
@@ -47,17 +51,17 @@ publishing, harness, scheduler, or platform work merely to fill the queue.
 
 ## Proving checks by seam
 
-Run the narrowest row that covers your diff; each is well under a second.
+Run the narrowest row that covers your diff; counts and timings vary as tests grow.
 
 | You changed | Run (`pytest` = `python -m pytest`) |
 |---|---|
-| `scorers/`, `adapters/` | `pytest tests/test_scorers.py` (20) |
-| `gate.py`, threshold rules | `pytest tests/test_verdicts.py` (15) |
-| `reports/`, `metrics.py` | `pytest tests/test_reports.py` (5) |
-| `pricing.py` | `pytest tests/test_cost.py` (8) |
-| `cli.py`, exit codes, GH env vars | `pytest tests/test_cli.py` (13) |
-| `providers/`, `runner.py` | `pytest tests/test_provider_failure.py` (9) |
-| anything in the report dict | `pytest tests/test_hashing.py tests/test_reproducibility.py` (14) |
+| `scorers/`, `adapters/` | `pytest tests/test_scorers.py` |
+| `gate.py`, threshold rules | `pytest tests/test_verdicts.py` |
+| `reports/`, `metrics.py` | `pytest tests/test_reports.py` |
+| `pricing.py` | `pytest tests/test_cost.py` |
+| `cli.py`, exit codes, GH env vars | `pytest tests/test_cli.py` |
+| `providers/`, `runner.py` | `pytest tests/test_provider_failure.py` |
+| anything in the report dict | `pytest tests/test_hashing.py tests/test_reproducibility.py` |
 | `examples/`, fixtures, thresholds | `make demo-green && make demo-red` |
 | `action.yml` | not runnable locally — the CI `action-self-test` lane is the only proof |
 

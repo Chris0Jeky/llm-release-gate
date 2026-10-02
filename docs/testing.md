@@ -4,7 +4,7 @@
 
 ```bash
 make install      # pip install -e ".[dev]"
-make test         # pytest (84 tests)
+make test         # pytest (see the pinned measurement below)
 make demo-green   # both green examples; target fails unless both exit 0
 make demo-red     # red example; target fails unless the gate exits exactly 1
 make ci           # test + demo-green + demo-red (what CI runs)
@@ -42,12 +42,20 @@ tests break exactly one thing per case.
 see NEXT.md); the Action's PR-comment step (needs a live PR; the rest of action.yml is
 self-tested in CI on both examples and the step logic was exercised locally, below).
 
-## Verified runs (2026-08-02, Windows 10, Python 3.14.3; CI mirrors on ubuntu 3.11/3.13)
+## Verified runs (2026-10-02, Windows, Python 3.14.3, pytest 9.0.3)
+
+Measured main commit `898b9ecafe67639b55de668b3624f6720a00755a` before the
+diagnostic-fix PRs. Test counts and timings describe this snapshot; they are
+not a fixed suite contract. The CI workflow declares Ubuntu Python 3.11/3.13
+and the Action self-test; those hosted lanes are separate evidence.
+
+`PYTHONPATH=src make ci PY=python` with Git-for-Windows Bash as Make's shell
+completed in 2.36 seconds. Its pytest step produced:
 
 `python -m pytest` →
 
 ```
-84 passed in 0.53s
+324 passed in 1.16s
 ```
 
 `make demo-green` → both gates PASS, exit 0. RAG example (prompt improvement):
@@ -62,18 +70,27 @@ llm-release-gate: gate FAIL
   [FAIL] quality.pass_rate: drop 0.375 vs allowed 0.1
   [FAIL] abstention.false_answer_rate: candidate 1 vs allowed maximum 0
   [FAIL] citations.valid_rate: drop 0.3 vs allowed 0.05
-  result hash: sha256:df684a0135c1cce66ca8977cd5c8234d710324010125e27c828d2fcecbb282f8
+  result hash: sha256:1384c5ac7550c2e5d713e9d5889ba6ceb144df5b467bf7c1d7b7c5429c715c77
 OK: regression correctly blocked (exit 1)
 ```
 
 (cost.total_usd fell 96.4% — and the gate still failed; that asymmetry is the product.)
 
-Reproducibility spot-check: consecutive red-example runs — and runs from a different
-checkout directory — produced byte-identical `report.json` and the same `result_hash`
-shown above (the report no longer embeds any absolute path).
+The 2026-10-02 run used a task-owned virtual environment, reused installed pytest,
+disabled unrelated global pytest plugins (`PYTEST_DISABLE_PLUGIN_AUTOLOAD=1`),
+and set a task-owned pytest `--basetemp`. `PYTHONPATH=src` pinned the worktree's
+source for both tests and demos. On Windows PowerShell, the exact Make invocation
+was `make ci PY=python 'SHELL=C:/Program Files/Git/bin/bash.exe'`. Without this
+shell override, Windows Make may misinterpret the deliberate red-demo recipe.
 
-Action logic local simulation (bash, `GITHUB_OUTPUT`/`GITHUB_STEP_SUMMARY` pointed at
-temp files, same commands as action.yml): outputs file received `verdict=fail`,
+Reproducibility spot-check: red-demo reports from three separate task worktrees
+(main and the two diagnostic branches) were byte-identical and shared the hash
+above. The full suite also exercised repeated-run and relocated-input
+reproducibility (the report does not embed absolute paths).
+
+Historical Action logic local simulation (2026-08-02; not rerun on 2026-10-02):
+bash, `GITHUB_OUTPUT`/`GITHUB_STEP_SUMMARY` pointed at temp files, same commands
+as action.yml. The outputs file received `verdict=fail`,
 `exit-code=1`, `result-hash=…`, report paths, `cli-exit=1`; summary file received the
 Markdown report; the enforce step maps `cli-exit=1` to a failed check.
 
