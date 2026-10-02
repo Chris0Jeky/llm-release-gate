@@ -24,7 +24,7 @@ production.
 
 ```bash
 make install     # pip install -e ".[dev]"
-make test        # 84 tests, < 1 s
+make test        # offline regression suite; measured run in docs/testing.md
 make demo-green  # two safe changes -> gate PASS (exit 0)
 make demo-red    # a deliberate regression -> gate FAIL (exit 1)
 ```
@@ -130,7 +130,8 @@ runner requirement; self-hosted runners must use GitHub Actions Runner **2.327.1
 
 The Action installs the CLI, runs the gate, writes the job summary, posts the Markdown
 report as a PR comment (also when it fails — that's the point), and fails the check on
-regression. Outputs: `verdict`, `result-hash`, `report-json|md|html`. This repo's own CI
+regression. Outputs: `verdict`, `result-hash`, `report-json`, `report-md`, and
+`report-html`. This repo's own CI
 self-tests the Action on both the green and the red example.
 
 `@v0` is the compatibility reference for the latest verified 0.x release. Pin a full commit
