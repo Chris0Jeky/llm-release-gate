@@ -49,40 +49,49 @@ fresh `sensitive_data` review. Keys remain environment-only and are never commit
 
 ## Future owner gates
 
-The next Action release is blocked on q-5 and q-6 below, reconciled on 2026-10-02.
+The next Action release is approved in q-5/q-6 below; qualification/publication
+receipts remain separate agent-owned checks, reconciled on 2026-10-02.
 Open other new questions only when live demand reaches an existing `NEXT.md` trigger.
 In particular, a result store or hosted UI requires a privacy,
 retention, and hosting decision before any user data is persisted.
 
-## q-5 — Next Action release and licence/floating-tag strategy — OWNER DECISION REQUIRED
+## q-5 — GPL publication and floating `v0` — APPROVED 2026-10-02
 
-Which release and licence/floating-tag strategy should be used for current GPL source?
-The existing acceleration bundle requires explicit D02/D03 decisions before publication:
+The owner explicitly approved publishing the current GPL release and moving
+`v0` to it at 22:45:50 UTC on 2026-10-02, after being told floating `v0`
+consumers would receive the new GPL version. This selects D02/D03's GPL-latest
+strategy. The current licence text is unchanged; historical MIT tags and their
+attribution remain intact. Target version is v0.2.0, reflecting q-6's strict contract.
+
+The decision supersedes the proposed patch-version plan:
 [release plan](docs/acceleration/2026-09-10/02-roadmap/release-plan-v0.1.3.md) and
 [ADR 0006](docs/acceleration/2026-09-10/03-architecture/adr/0006-release-licence-and-floating-tag.md).
-The ADR remains Proposed with no choice recorded. Its options include GPL with an explicit
-floating-tag transition, GPL with `v0` frozen on MIT, a permissive licence, or dual licensing;
-an agent must not select a licence strategy. Any `v0` movement also requires q-6 compatibility.
+ADR 0006 now records this approval and the specific transition exception.
 
-- [ ] Record the intended release and explicit D03 strategy before tagging or publishing.
+- [x] Record the intended release and explicit D03 strategy before tagging or publishing.
 - [ ] After the choice, verify the exact release head, package archives/clean install,
   Action self-test, licence notices, remote tags/release and Marketplace resolution.
 
-Observed state: published `v0.1.2` and `v0` still peel to
-`5c3623587ef6b7d636f923021d10a238f5113df7` (MIT). Current source is GPL-3.0-only but
-still reports package version `0.1.2`. General merge/deploy authorization does not select
-the licence received by floating-tag consumers. No release or tag was changed by this audit.
+Last verified publication before this release: `v0.1.2` and `v0` peel to
+`5c3623587ef6b7d636f923021d10a238f5113df7` (MIT). v0.2.0 source is GPL-3.0-only;
+the ledger records observed publication/tag state after qualification.
 
-## q-6 — Released input compatibility — OWNER DECISION REQUIRED
+## q-6 — Strict identifiers — DECIDED 2026-10-02
 
-Preserve harmless released name/model normalization for a compatible maintenance release,
-or retain the narrowed schema and use the major-version path while leaving `v0` untouched?
+The owner chose the simpler strict-identifier implementation and said there
+are no users whose legacy coercion must be preserved. Numeric normalization
+restoration was cancelled before any edit or commit; identifiers remain strings.
+v0.2.0 signals the stricter pre-1.0 contract. Together with q-5, this is a
+specific owner-approved exception to the default major-version/`v0` rule,
+not a claim of backward compatibility or permission for future breaking aliases.
 [Issue #65](https://github.com/Chris0Jeky/llm-release-gate/issues/65) records synthetic
 full-gate reproductions: numeric dataset/config names and model IDs pass in published
 v0.1.2 after explicit `str(...)` normalization, but current source rejects them with exit 2
-after #42. String controls produce identical reports and hashes. This is separate from
+after #42. The historical pre-version-bump probe compared two tool-version 0.1.2
+trees; its string controls produced identical reports and hashes. v0.2.0 report
+hashes change because the report embeds the tool version. This is separate from
 fail-closed fixes for malformed policy or invalid measured data.
 
-- [ ] Record the intended input contract and release-version path.
-- [ ] Add regressions for that contract and requalify the final release head; repository
-  policy treats breaking input schemas as a major-version event and forbids moving `v0`.
+- [x] Record the intended input contract and release-version path.
+- [ ] Requalify the final release head, retaining strict-name/model regressions
+  and fail-closed measurement/policy tests.
