@@ -85,7 +85,7 @@ def test_special_input_is_clean_cli_error(mini_gate, target, kind):
     # device. No special-file bytes should ever be read by the gate.
     program = (
         "import os, sys\n"
-        "if os.name == 'posix':\n"
+        "if sys.platform == 'linux':\n"
         " import resource\n"
         " resource.setrlimit(resource.RLIMIT_AS, (128 * 1024 * 1024,) * 2)\n"
         "from llm_release_gate.cli import main\n"
