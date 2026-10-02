@@ -103,9 +103,10 @@ alone), each at level `fail` or `warn`. See `examples/*/thresholds.json`.
 
 The Action is publicly available in the
 [GitHub Marketplace](https://github.com/marketplace/actions/llm-release-gate). Use
-`Chris0Jeky/llm-release-gate@v0`: the owner-approved v0.2.0 transition moves this
-floating reference to GPL source with strict identifiers. See the
-[release ledger](ORCHESTRATOR.md) for the verified publication state. Use
+`Chris0Jeky/llm-release-gate@v0`: this reference resolves to the reviewed GPL
+[v0.2.0 release](https://github.com/Chris0Jeky/llm-release-gate/releases/tag/v0.2.0)
+with strict identifiers. The Marketplace version chooser still awaits v0.2.0 registration;
+see the [release ledger](ORCHESTRATOR.md) for the remaining listing update. Use
 `uses: ./` only from a workflow inside a checkout of this repository.
 
 ```yaml

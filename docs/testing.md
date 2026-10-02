@@ -119,6 +119,10 @@ Its report hashes are `34742875a2979772b7a3db015182e3a9e9753261273953dc286f6ab81
 (extraction), and `432ccdf9bdb263f642d5607528f4b80cfe79bd15d0603fd543fa46ab78bd7b05`
 (red). The tool version is part of each report; these hashes differ from the
 historical 0.1.2 measurements above. Exact release receipts live in the ledger.
+Python 3.11 cost summation produces different rag/red hashes from Python 3.13+
+for these inputs; observed verdicts agree. Pin the Python version when comparing
+result hashes until [#69](https://github.com/Chris0Jeky/llm-release-gate/issues/69)
+is resolved; this is separate from input line-ending normalization.
 
 The verifier compares `LICENSE`, `RELICENSING.md` and `LICENSES/MIT.txt` bytes
 against the checkout in both archives, checks package metadata and zero runtime
