@@ -9,24 +9,28 @@ repository policy; live evidence always wins.
   after the repository gate is met.
 - **Identity:** the public repository was renamed to
   [`Chris0Jeky/llm-release-gate`](https://github.com/Chris0Jeky/llm-release-gate) on 2026-08-02.
-- **Release state:** `v0.1.0` remains immutable at `0e0f480`; `v0.1.1` remains immutable at
-  `5514019`; annotated `v0.1.2` and the current `v0` compatibility tag both peel to `5c36235`.
-  The public [v0.1.2 GitHub release](https://github.com/Chris0Jeky/llm-release-gate/releases/tag/v0.1.2)
-  was published 2026-08-02. The public
-  [GitHub Marketplace listing](https://github.com/marketplace/actions/llm-release-gate) is live
-  at `v0.1.2` with **Continuous integration** and **Code quality** categories.
+- **Release state:** GPL [v0.2.0](https://github.com/Chris0Jeky/llm-release-gate/releases/tag/v0.2.0)
+  was published 2026-10-02 at 23:14:53 UTC. Both annotated `v0.2.0` and floating
+  `v0` peel to `d3e80877f0bdd309a049aba5dfdfd49ea032a1d9`. Historical MIT
+  `v0.1.0` (`0e0f480`), `v0.1.1` (`5514019`) and `v0.1.2` (`5c36235`) retain
+  their exact tag objects and targets. See [verified receipt](docs/releases/v0.2.0.md).
+- **Marketplace:** the public listing's Latest display resolves to v0.2.0 with the
+  existing **Continuous integration** and **Code quality** categories. Its release
+  chooser still contains only v0.1.2; registering v0.2.0 through the existing
+  release editor remains unexecuted because no Computer Use runtime was callable.
 - **Decisions:** q-1 and q-3 are complete; q-2 is deliberately deferred; q-4 waits for two
   real users. q-5/q-6 are approved: publish the strict GPL release and move `v0`
-  to it. Target v0.2.0; qualification/publication are agent-owned, pending verified
-  receipts. Owner approval was received 2026-10-02 at 22:45:50 UTC.
-- **Next release evidence:** remote `v0.1.2`/`v0` and the latest GitHub release
-  last resolved to MIT `5c36235`; current GPL source reports `0.2.0`. Numeric names/model
-  IDs accepted by the public release are rejected by current loaders; synthetic full-gate
-  reproduction and the chosen strict contract are tracked in
-  [#65](https://github.com/Chris0Jeky/llm-release-gate/issues/65). No new release or tag
-  movement is verified in this preparation checkpoint. Private candidate packaging
-  reproduced/fixed wheel notice omission #67; exact release-head checks remain
-  required before publication. Maintenance CI does not supply package acceptance.
+  to it. This exact transition is published and verified; approval was received
+  2026-10-02 at 22:45:50 UTC. The Marketplace UI task requires no new product decision.
+- **Release evidence:** #68 fixed reproduced wheel notice omission #67 and aligned
+  version sources at 0.2.0. Exact merged-head Windows CI passed 356 tests and demos;
+  hosted Ubuntu Python 3.11/3.13 passed 360 tests each, package acceptance and Action
+  self-test. Published assets match the tested uploads; the tagged source archive
+  matches all 149 tracked Git blobs. #65 is resolved by the chosen strict contract.
+- **Known limitation:** [#69](https://github.com/Chris0Jeky/llm-release-gate/issues/69)
+  records cross-Python cost precision/report-hash drift; observed verdicts agree.
+  Pin Python when comparing hashes. Live PR-comment delivery, PyPI and real-provider
+  execution remain unverified and were not enabled.
 - **Known low item:** issue #7's stale proving-check count was corrected and closed by PR #9;
   it never blocked the release.
 - **Release proof:** the prior 227-character Action description was corrected to 122 characters;
@@ -67,9 +71,9 @@ repository policy; live evidence always wins.
 |---|---|---|---|
 | Repository identity | COMPLETE | Keep all canonical references on `Chris0Jeky/llm-release-gate`. | None. |
 | Release readiness | COMPLETE | PR #10 merged after exact-head local/hosted checks and independent review. | None. |
-| Public Action releases | COMPLETE | `v0.1.0` and `v0.1.1` remain immutable; `v0.1.2` and `v0` both resolve to reviewed `5c36235`; the release is public. | None. |
-| Next Action release | QUALIFYING | v0.2.0 strict GPL release; run exact-head CI/package/clean-install/Action checks, publish immutable tag/release, then advance and verify v0. | None: q-5/q-6 approved this exact strategy. |
-| Marketplace | COMPLETE | Public listing is live at `v0.1.2` with **Continuous integration** and **Code quality** categories. | None. |
+| Public Action releases | COMPLETE | v0.2.0/v0 peel to reviewed `d3e8087`; historical MIT tags remain unchanged. | None. |
+| Next Action release | COMPLETE | Strict GPL v0.2.0 publication, package/clean-install/Action checks, remote peeling and downloaded assets verified. | None: q-5/q-6 approved this exact strategy. |
+| Marketplace | UI TASK PENDING | Latest display shows v0.2.0; register it in the version chooser via the existing release editor and verify. | Tool capability; stop if a new agreement/identity prompt appears. |
 | PyPI | DORMANT | Do nothing until a real `pip install` request; then re-open q-2 and use Trusted Publishing. | Publishing identity/account configuration. |
 | Real provider | DORMANT | Do nothing until two real users request live-model runs; then implement only the requested provider. | Provider, secret path, and `sensitive_data` review. |
 | Product maintenance | TRIGGER-DRIVEN | Work a verified failure, confirmed defect, or observable `NEXT.md` trigger. | Any new privacy, retention, hosting, or spending decision. |
@@ -109,10 +113,11 @@ from this repository or this session. This repo's local tier declaration is the 
 
 ## Resume
 
-**Exact resume point:** q-5/q-6 authorize the strict GPL v0.2.0 publication and
-`v0` transition. First reconcile live PR/CI/review/tag/release/listing state so no
-publication is duplicated; complete exact-head package/CI/Action acceptance,
-publish only once, verify remote peeling/assets and record observed completion.
+**Exact resume point:** GPL v0.2.0 and the `v0` transition are published and
+verified. Reconcile live state, then finish the Marketplace version-chooser UI
+task through the existing release editor when a UI runtime is available. Do not
+duplicate the release or move either tag. Next bounded maintenance scope is #69's
+observed cross-Python cost/hash drift; preserve fail-closed and unknown-cost semantics.
 Otherwise work only a verified failure, confirmed defect, or an
 observable `NEXT.md` trigger; if none
 exists, stop with this checkpoint rather than inventing PyPI, provider, scheduler, hook, or

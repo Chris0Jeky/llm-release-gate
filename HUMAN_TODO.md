@@ -17,7 +17,7 @@ Owner decision: publish the Action from the renamed public repository as
 - [x] Annotated `v0.1.1` remains immutable at `5514019`; the public
   [v0.1.1 GitHub release](https://github.com/Chris0Jeky/llm-release-gate/releases/tag/v0.1.1)
   is published.
-- [x] Annotated `v0.1.2` and the current `v0` compatibility tag both verified at `5c36235`;
+- [x] Annotated `v0.1.2` and the then-current `v0` tag both verified at `5c36235`;
   the public [v0.1.2 GitHub release](https://github.com/Chris0Jeky/llm-release-gate/releases/tag/v0.1.2)
   is published.
 
@@ -49,8 +49,8 @@ fresh `sensitive_data` review. Keys remain environment-only and are never commit
 
 ## Future owner gates
 
-The next Action release is approved in q-5/q-6 below; qualification/publication
-receipts remain separate agent-owned checks, reconciled on 2026-10-02.
+The GPL v0.2.0 release and `v0` transition approved in q-5/q-6 are published and
+verified. Marketplace version selection remains a UI task; see q-5 and the ledger.
 Open other new questions only when live demand reaches an existing `NEXT.md` trigger.
 In particular, a result store or hosted UI requires a privacy,
 retention, and hosting decision before any user data is persisted.
@@ -69,12 +69,19 @@ The decision supersedes the proposed patch-version plan:
 ADR 0006 now records this approval and the specific transition exception.
 
 - [x] Record the intended release and explicit D03 strategy before tagging or publishing.
-- [ ] After the choice, verify the exact release head, package archives/clean install,
-  Action self-test, licence notices, remote tags/release and Marketplace resolution.
+- [x] Verify the exact release head, package archives/clean install, Action self-test,
+  licence notices, public release/assets and both remote tag targets.
+- [ ] Select **Publish this Action to the GitHub Marketplace** in the existing
+  [v0.2.0 release editor](https://github.com/Chris0Jeky/llm-release-gate/releases/edit/v0.2.0),
+  retaining the existing categories, and verify v0.2.0 appears in the version chooser.
+  This task had no callable Computer Use runtime. Approval is already recorded;
+  no new agreement/identity prompt was accepted or inferred.
 
-Last verified publication before this release: `v0.1.2` and `v0` peel to
-`5c3623587ef6b7d636f923021d10a238f5113df7` (MIT). v0.2.0 source is GPL-3.0-only;
-the ledger records observed publication/tag state after qualification.
+Published 2026-10-02 at 23:14:53 UTC: GPL v0.2.0 and floating `v0` both peel to
+`d3e80877f0bdd309a049aba5dfdfd49ea032a1d9`. All historical MIT tag objects and
+targets are unchanged. The ledger and [release receipt](docs/releases/v0.2.0.md)
+record observed qualification and asset checks. Marketplace's Latest display
+shows v0.2.0, but its selectable releases contain only v0.1.2.
 
 ## q-6 — Strict identifiers — DECIDED 2026-10-02
 
@@ -93,5 +100,5 @@ hashes change because the report embeds the tool version. This is separate from
 fail-closed fixes for malformed policy or invalid measured data.
 
 - [x] Record the intended input contract and release-version path.
-- [ ] Requalify the final release head, retaining strict-name/model regressions
+- [x] Requalify the final release head, retaining strict-name/model regressions
   and fail-closed measurement/policy tests.
