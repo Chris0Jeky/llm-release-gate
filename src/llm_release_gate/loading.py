@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import json
 import math
-import os
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
@@ -20,16 +19,23 @@ from .hashing import json_source_sha256
 
 
 def _load_json_file(path: str, what: str) -> tuple[Any, str]:
-    if not os.path.isfile(path):
-        raise GateConfigError(f"{what} file not found: {path}")
     try:
         with open(path, "rb") as fh:
             source = fh.read()
+    except FileNotFoundError as exc:
+        raise GateConfigError(f"{what} file not found: {path}") from exc
+    except (OSError, ValueError) as exc:
+        raise GateConfigError(f"{what} file could not be read: {path} ({exc})") from exc
+    try:
         data = json.loads(source.decode("utf-8"))
     except UnicodeDecodeError as exc:
         raise GateConfigError(f"{what} file is not valid UTF-8: {path} ({exc})") from exc
     except json.JSONDecodeError as exc:
         raise GateConfigError(f"{what} file is not valid JSON: {path} ({exc})") from exc
+    except ValueError as exc:
+        raise GateConfigError(f"{what} file could not be parsed as JSON: {path} ({exc})") from exc
+    except RecursionError as exc:
+        raise GateConfigError(f"{what} file exceeds JSON nesting limit: {path} ({exc})") from exc
     return data, json_source_sha256(source)
 
 
