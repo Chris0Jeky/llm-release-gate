@@ -50,6 +50,25 @@ def test_validate_fixtures_accepts_finite_latency():
     _validate_fixtures({"m": {"q1": {"text": "x", "latency_ms": 820.0}}}, "f.json")
 
 
+def test_validate_fixtures_rejects_overflowing_integer_latency():
+    with pytest.raises(GateConfigError, match="finite non-negative") as excinfo:
+        _validate_fixtures({"m": {"q1": {"text": "x", "latency_ms": 10**400}}}, "f.json")
+    assert "model 'm', item 'q1'" in str(excinfo.value)
+
+
+def test_overflowing_latency_is_clean_cli_config_error(mini_gate, capsys):
+    responses = {k: dict(v) for k, v in GOOD_RESPONSE.items()}
+    responses["r2"]["latency_ms"] = 10**400
+    paths = mini_gate(candidate_responses=responses)
+    assert main(gate_argv(paths)) == 2
+    err = capsys.readouterr().err
+    assert "configuration error" in err
+    assert "model 'm-cand', item 'r2'" in err
+    assert "finite non-negative" in err
+    assert "Traceback" not in err
+    assert not (paths["tmp"] / "out" / "report.json").exists()
+
+
 def test_nan_latency_candidate_is_config_error(mini_gate):
     # json.dumps(float("nan")) writes a bare NaN literal — the same bytes a real
     # hand-edited fixture file would carry — and mini_gate writes fixtures that way.
