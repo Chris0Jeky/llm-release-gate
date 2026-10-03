@@ -1,7 +1,6 @@
 {
   "includeCoAuthoredBy": false,
   "permissions": {
-    "defaultMode": "acceptEdits",
     "allow": [
       "Read(*)",
       "Grep(*)",
