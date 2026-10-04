@@ -59,7 +59,7 @@ Subclass `TaskAdapter`; provide `prompt_fields(item)` (the `$fields` your users'
 templates can reference) and `parse(text, item) -> ParsedOutput`. Set `name` and bump
 `version` whenever parsing conventions change - the version is recorded in run summaries
 (`run.json` and `report.json`'s `runs`),
-so a convention change is visible as a different run identity. Register in
+so a convention change is visible as a different run identity. `manifest.json` pins only provider identity and config hashes; adapter name/version are not recorded there. Register in
 `adapters/__init__.py`. Keep output conventions (citation markers, abstention phrasing)
 in the adapter — scorers must stay convention-agnostic. Set `required_input`
 to the input keys your prompt needs as non-empty strings (missing one is exit 2).
