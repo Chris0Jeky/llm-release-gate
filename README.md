@@ -127,7 +127,7 @@ steps:
       comment: "true"                    # posts/updates the PR comment
 ```
 
-The public Action's setup uses the Node 24 runtime. GitHub-hosted runners already meet its
+The public Action is a composite action: setup installs Python via setup-python and installs the gate with pip. GitHub-hosted runners already meet its
 runner requirement; self-hosted runners must use GitHub Actions Runner **2.327.1 or newer**.
 
 The Action installs the CLI, runs the gate, writes the job summary, posts the Markdown
