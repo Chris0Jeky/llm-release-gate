@@ -6,7 +6,7 @@ the rate special-cases are all pinned as implemented today.
 """
 
 
-from llm_release_gate.reports import fmt_delta, fmt_value
+from llm_release_gate.reports import fmt_delta, fmt_value, is_heuristic, verdict_word
 
 
 # --- fmt_value: usd ---
@@ -163,5 +163,14 @@ def test_fmt_delta_unknown_unit_falls_back_to_general_format():
 def test_fmt_delta_unknown_unit_none_pct_omits_parens():
     entry = {"candidate": {"unit": "score"}, "delta": {"abs": 0.05, "pct": None}}
     assert fmt_delta(entry) == "+0.05"
+
+
+# --- heuristic dagger / verdict word ---
+
+
+def test_heuristic_kind_marks_dagger():
+    assert is_heuristic({"kind": "heuristic_rate"}) is True
+    assert is_heuristic({"kind": "rate"}) is False
+    assert verdict_word("skipped") == "SKIPPED"
 
 
