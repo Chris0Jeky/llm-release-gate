@@ -8,7 +8,9 @@ the sample count it was computed over.
 
 from __future__ import annotations
 
+import math
 import os
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -157,6 +159,18 @@ def run_config(
     )
 
 
+def _stable_sum(values: Iterable[float]) -> float:
+    """Use an explicit float algorithm, independent of Python's built-in sum.
+
+    Non-representable totals remain non-finite so scalar_metric reports them
+    unavailable rather than raising or substituting a partial/rounded total.
+    """
+    try:
+        return math.fsum(values)
+    except (OverflowError, ValueError):
+        return math.nan
+
+
 def _aggregate(records: list[ItemRecord], scorers: list[Scorer]) -> dict:
     ok = [r for r in records if r.status == "ok"]
     aggregates = aggregate_scores(scorers, [r.scores for r in ok])
@@ -178,7 +192,7 @@ def _aggregate(records: list[ItemRecord], scorers: list[Scorer]) -> dict:
             percentile(latencies, 95), "ms", LOWER, n=len(latencies), kind="recorded", note=note
         )
         aggregates["latency.mean_ms"] = scalar_metric(
-            sum(latencies) / len(latencies), "ms", LOWER, n=len(latencies), kind="recorded", note=note
+            _stable_sum(latencies) / len(latencies), "ms", LOWER, n=len(latencies), kind="recorded", note=note
         )
     else:
         for key in ("latency.p50_ms", "latency.p95_ms", "latency.mean_ms"):
@@ -206,7 +220,7 @@ def _aggregate(records: list[ItemRecord], scorers: list[Scorer]) -> dict:
     with_cost = [r for r in ok if r.cost_usd is not None]
     if ok and len(with_cost) == len(ok):
         aggregates["cost.total_usd"] = scalar_metric(
-            sum(r.cost_usd for r in ok), "usd", LOWER, n=len(ok), kind="derived",
+            _stable_sum(r.cost_usd for r in ok), "usd", LOWER, n=len(ok), kind="derived",
             note=f"tokens x pricing table, over {len(ok)} answered items",
         )
     else:
