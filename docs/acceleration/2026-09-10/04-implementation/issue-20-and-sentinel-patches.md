@@ -9,18 +9,29 @@ Current concerns:
 - `Bash(rg:*)` is not read-only because `rg --pre COMMAND` executes another program.
 - repository notes that place `bypassPermissions` in project/local settings are stale for current Claude Code behaviour.
 
-### Bounded patch shape
+### Current repository repair
 
-Remove the `rg` rule. Replace broad `gh` access with the smallest read-only commands actually needed by the repository harness, for example exact families for status/list/view operations after testing the runtime matcher. Do not auto-allow `gh api`, release mutations, issue edits, workflow dispatch, secret operations, or arbitrary extension commands.
+Remove both `Bash(rg:*)` and the malformed `Bash(gh :*)` from the committed
+allow list. Do not replace either with broader access. Built-in `Read`, `Grep`
+and `Glob` remain available; no GitHub CLI command family is auto-allowed by this
+repair. Any future narrow `gh` allow rule needs its own runtime-matcher checks.
 
-Update `.agent-harness/tier.json`, `CLAUDE.md`, `AGENTS.md`, or related estate notes only where they repeat the obsolete local bypass recipe. Keep `defaultMode: acceptEdits` as the committed baseline.
+The 2026-10-03 owner decision recorded in `.agent-harness/tier.json` supersedes
+this bundle's September baseline: keep no project `defaultMode`, preserving the
+owner's user-scope permission mode. Do not add a project/local bypass recipe or
+restore a project `acceptEdits` override. Existing deny entries are unchanged.
 
-### Verification
+### Verification and limits
 
-- validate JSON;
-- exercise every intended allow and representative near-miss/deny command through the actual permission matcher;
-- prove `rg --pre`, broad `gh api`, release mutation, force push, and destructive shell commands are not auto-approved;
-- run repository docs/config checks and close #20 with measured evidence.
+`tests/test_claude_permissions.py` validates JSON, removal of both rules, absence
+of replacement `gh` rules, retained read tools/deny entries, and the current
+owner-scope documentation. This is a static repository contract check, **not a runtime permission-matcher proof**.
+
+No Claude permission matcher was executed for this repair. User-scope settings,
+hooks, bypass mode, and other existing shell permissions remain outside this
+check. Removing these entries is not a claim that every possible command is
+sandboxed or that owner-selected bypass mode is disabled. Test actual matching
+before adding new shell allows; never infer it from a prefix-only imitation.
 
 ## Field-match missing sentinel
 
