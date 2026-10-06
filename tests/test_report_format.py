@@ -6,7 +6,15 @@ the rate special-cases are all pinned as implemented today.
 """
 
 
-from llm_release_gate.reports import fmt_delta, fmt_value
+import json
+
+import pytest
+
+from conftest import gate_argv
+from llm_release_gate.cli import main
+from llm_release_gate.reports import fmt_delta, fmt_value, is_heuristic, verdict_word
+from llm_release_gate.reports.html import render_html
+from llm_release_gate.reports.markdown import render_markdown
 
 
 # --- fmt_value: usd ---
@@ -165,3 +173,40 @@ def test_fmt_delta_unknown_unit_none_pct_omits_parens():
     assert fmt_delta(entry) == "+0.05"
 
 
+# --- heuristic dagger / verdict word ---
+
+
+@pytest.mark.parametrize("render", [render_markdown, render_html])
+@pytest.mark.parametrize("side", [None, "baseline", "candidate"])
+def test_heuristic_kind_marks_dagger(mini_gate, render, side):
+    paths = mini_gate()
+    assert main(gate_argv(paths)) == 0
+    with open(f"{paths['out']}/report.json", encoding="utf-8") as stream:
+        report = json.load(stream)
+    # Either run can supply a heuristic metric; ordinary rates get no warning.
+    for entry in report["metrics"].values():
+        for run in ("baseline", "candidate"):
+            entry[run]["kind"] = "rate"
+    if side is not None:
+        report["metrics"]["quality.pass_rate"][side]["kind"] = "heuristic_rate"
+    output = render(report)
+    if side is None:
+        assert "\u2020" not in output
+        assert "not a probability" not in output
+    else:
+        assert "quality.pass_rate \u2020" in output
+        assert "not a probability" in output
+
+
+def test_is_heuristic_classifies_metric_kind():
+    assert is_heuristic({"kind": "heuristic_rate"}) is True
+    assert is_heuristic({"kind": "rate"}) is False
+    assert is_heuristic({}) is False
+
+
+@pytest.mark.parametrize("verdict, word", [
+    ("pass", "PASS"), ("fail", "FAIL"), ("warn", "WARN"),
+    ("skipped", "SKIPPED"), ("custom", "CUSTOM"),
+])
+def test_verdict_word(verdict, word):
+    assert verdict_word(verdict) == word
