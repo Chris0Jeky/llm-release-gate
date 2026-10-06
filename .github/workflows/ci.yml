@@ -86,3 +86,28 @@ jobs:
           test "${{ steps.red.outcome }}" = "failure"
           test "${{ steps.red.outputs.verdict }}" = "fail"
           echo "action self-test OK: green passed, red was blocked"
+
+  report-reproducibility:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/download-artifact@v5
+        with:
+          name: demo-reports-3.11
+          path: reports-3.11
+      - uses: actions/download-artifact@v5
+        with:
+          name: demo-reports-3.13
+          path: reports-3.13
+      - name: Compare deterministic report bytes across Python versions
+        shell: bash
+        run: |
+          set -euo pipefail
+          for example in rag-support-bot extraction-api assistant-cheap-regression; do
+            for format in json md html; do
+              cmp "reports-3.11/$example/report.$format" "reports-3.13/$example/report.$format"
+            done
+          done
+          echo "All nine report artifacts are byte-identical across Python 3.11 and 3.13"
