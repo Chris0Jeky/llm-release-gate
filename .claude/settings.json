@@ -7,7 +7,6 @@
       "Glob(*)",
       "Bash(pwd:*)",
       "Bash(ls:*)",
-      "Bash(rg:*)",
       "Bash(cat:*)",
       "Bash(git status:*)",
       "Bash(git log:*)",
@@ -20,8 +19,7 @@
       "Bash(git pull:*)",
       "Bash(git push:*)",
       "Bash(git switch:*)",
-      "Bash(git checkout:*)",
-      "Bash(gh :*)"
+      "Bash(git checkout:*)"
     ],
     "deny": [
       "Bash(git push --force:*)",
