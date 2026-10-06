@@ -23,8 +23,29 @@ Decision `D03` intentionally requires explicit owner confirmation because it gov
 
 Read `06-agent/AGENT_START.md`, then use the issue catalog and implementation references in dependency order. Work the smallest coherent, verifiable slice. Do not treat trigger-gated horizon work as an active backlog merely because it is documented here.
 
-To reconstruct and optionally extract the complete bundle:
+## Reconstruct and preview
+
+The decision and issue catalogs are inside the archive, not beside the checked-in
+script. Run these commands from the **repository root**, using a new extraction
+destination (the assembler refuses an existing non-empty destination):
 
 ```bash
-python archive/assemble_bundle.py --extract
+python docs/acceleration/2026-09-10/archive/assemble_bundle.py --extract --destination .planning/acceleration-source
+python docs/acceleration/2026-09-10/scripts/unbundle.py --repo . --bundle .planning/acceleration-source/llm-release-gate-acceleration-bundle --decisions docs/acceleration/2026-09-10/01-decisions/selected-decisions.example.json
 ```
+
+Use the checked-in `scripts/unbundle.py`, not the historical copy inside the
+reconstructed archive. `--bundle` is required and must point at the directory
+containing `01-decisions/decision-catalog.json` and `02-roadmap/issue-catalog.json`.
+The immutable archive is historical evidence and is not rewritten by this repair.
+
+The example export is a **preview fixture, not current owner authorization**.
+Use the owner's actual export for a real plan and reconcile every choice against
+live repository state and `HUMAN_TODO.md`. A selected human-required option remains
+visible as `blocked-human-decision` until its confirmation is literally JSON
+`true`. A confirmation without a selected option does not grant authority.
+Blockers propagate through all dependent tasks and retain their decision IDs.
+
+The unbundler defaults to a dry run and writes nothing. Add `--scaffold` only to
+write planning files under a child of `.planning`; `--force` retains that boundary.
+It never edits product source, creates issues, or executes selected tasks.

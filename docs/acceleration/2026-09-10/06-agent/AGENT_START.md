@@ -20,7 +20,7 @@ Do not interpret reference snippets as already-tested patches. Reconcile them ag
 2. Refresh `git status`, worktrees, `origin/main`, open issues/PRs/reviews/checks, tags/releases and Marketplace state.
 3. Compare current head with the bundle's analysed head. Record all drift.
 4. Validate the owner decision export. A human decision is actionable only when `confirmed: true`.
-5. Run `scripts/unbundle.py` in dry-run mode to produce the selected task plan.
+5. Run the checked-in `scripts/unbundle.py` with an explicit `--bundle` pointing to the reconstructed catalogs, in dry-run mode. Use the repository-root commands in `../START_HERE.md`; do not execute the historical archived script.
 6. Work an in-flight correctness/security failure first. Otherwise start with the smallest unblocked task in dependency order.
 
 ## Recommended first slice
