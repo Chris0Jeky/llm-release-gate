@@ -109,7 +109,7 @@ A snapshot needs to represent success, provider/application failure and unavaila
 ```json
 {
   "schema_version": "1",
-  "snapshot_id": "sha256:...",
+  "snapshot_sha256": "sha256:...",
   "plan_sha256": "sha256:...",
   "dataset_sha256": "sha256:...",
   "config_sha256": "sha256:...",
@@ -132,7 +132,7 @@ A snapshot needs to represent success, provider/application failure and unavaila
 }
 ```
 
-A volatile capture manifest may hold timestamps, machine paths and CI URLs outside `snapshot_id`.
+A volatile capture manifest may hold timestamps, machine paths and CI URLs outside `snapshot_sha256`.
 
 ## Comparison populations
 

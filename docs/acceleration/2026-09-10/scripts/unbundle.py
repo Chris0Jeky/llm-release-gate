@@ -70,6 +70,8 @@ def validate_and_select(catalog: dict, issues: dict, export: dict) -> tuple[list
     decision_by_id = {d["id"]: d for d in catalog["decisions"]}
     option_by_id = {o["id"]: (d, o) for d in catalog["decisions"] for o in d["options"]}
     selected_task_ids: set[str] = set()
+    confirmed_decisions: set[str] = set()
+    task_blockers: dict[str, set[str]] = defaultdict(set)
     blocked_reasons: list[str] = []
     notes: list[str] = []
 
@@ -89,10 +91,14 @@ def validate_and_select(catalog: dict, issues: dict, export: dict) -> tuple[list
         if oid not in option_by_id or option_by_id[oid][0]["id"] != did:
             raise SystemExit(f"option {oid!r} does not belong to {did}")
         decision, option = option_by_id[oid]
-        if decision.get("requires_human") and not selection.get("confirmed", False):
+        tasks = option.get("tasks", [])
+        selected_task_ids.update(tasks)
+        if selection.get("confirmed") is True:
+            confirmed_decisions.add(did)
+        if decision.get("requires_human") and did not in confirmed_decisions:
             blocked_reasons.append(f"{did}: {oid} is selected but not human-confirmed")
-        else:
-            selected_task_ids.update(option.get("tasks", []))
+            for task_id in tasks:
+                task_blockers[task_id].add(did)
         note = str(selection.get("note", "")).strip()
         if note:
             notes.append(f"{did}: {note}")
@@ -108,23 +114,33 @@ def validate_and_select(catalog: dict, issues: dict, export: dict) -> tuple[list
     while stack:
         task_id = stack.pop()
         for dep in issue_by_id[task_id].get("depends_on", []):
+            if dep not in issue_by_id:
+                raise SystemExit(f"task {task_id} depends on unknown task {dep!r}")
             if dep not in selected_task_ids:
                 selected_task_ids.add(dep)
                 stack.append(dep)
 
-    selected = {key: issue_by_id[key] for key in selected_task_ids}
+    selected = {key: dict(issue_by_id[key]) for key in selected_task_ids}
     ordered = topo_sort(selected)
 
-    confirmed = {s["decision_id"]: bool(s.get("confirmed")) for s in export.get("decisions", [])}
+    # Dependencies precede their children. Carry every human blocker forward,
+    # including those implied by option selection rather than task metadata.
     for task in ordered:
+        blockers = task_blockers[task["id"]]
         for did in task.get("decision_ids", []):
-            d = decision_by_id[did]
-            if d.get("requires_human") and not confirmed.get(did, False):
-                task = dict(task)
-                task["bundle_status"] = "blocked-human-decision"
-                task["bundle_blocker"] = did
-                selected[task["id"]] = task
-    ordered = topo_sort(selected)
+            if did not in decision_by_id:
+                raise SystemExit(f"task {task['id']} references unknown decision {did!r}")
+            if decision_by_id[did].get("requires_human") and did not in confirmed_decisions:
+                blockers.add(did)
+        for dep in task.get("depends_on", []):
+            blockers.update(task_blockers[dep])
+        if blockers:
+            task["bundle_status"] = "blocked-human-decision"
+            task["bundle_blocker"] = ", ".join(sorted(blockers))
+    listed_decisions = {reason.split(":", 1)[0] for reason in blocked_reasons}
+    required_decisions = {did for blockers in task_blockers.values() for did in blockers}
+    for did in sorted(required_decisions - listed_decisions):
+        blocked_reasons.append(f"{did}: no confirmed option selected (required by selected tasks)")
     return ordered, blocked_reasons, notes
 
 
@@ -166,7 +182,8 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--repo", type=pathlib.Path, required=True, help="live repository root")
     parser.add_argument("--decisions", type=pathlib.Path, required=True, help="deck JSON export")
-    parser.add_argument("--bundle", type=pathlib.Path, default=pathlib.Path(__file__).resolve().parents[1])
+    parser.add_argument("--bundle", type=pathlib.Path, required=True,
+                        help="reconstructed bundle root containing 01-decisions and 02-roadmap")
     parser.add_argument("--output", default=".planning/llm-release-gate-acceleration")
     parser.add_argument("--scaffold", action="store_true", help="write planning files")
     parser.add_argument("--force", action="store_true", help="replace an existing planning output")
