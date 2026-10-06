@@ -27,10 +27,15 @@ repository policy; live evidence always wins.
   hosted Ubuntu Python 3.11/3.13 passed 360 tests each, package acceptance and Action
   self-test. Published assets match the tested uploads; the tagged source archive
   matches all 149 tracked Git blobs. #65 is resolved by the chosen strict contract.
-- **Known limitation:** [#69](https://github.com/Chris0Jeky/llm-release-gate/issues/69)
-  records cross-Python cost precision/report-hash drift; observed verdicts agree.
-  Pin Python when comparing hashes. Live PR-comment delivery, PyPI and real-provider
-  execution remain unverified and were not enabled.
+- **Maintenance:** PRs #78, #79 and #80 are merged, repairing cross-Python aggregation
+  (#69), unbundler selection/dependency blockers (#22), and repository permission
+  rules (#20). Their integrated source passes 407 tests and all hosted jobs.
+  See [exact-head receipts and remaining work](docs/maintenance-78-80.md).
+- **Numerical scope:** #69 is fixed on main, with all nine demo report artifacts
+  compared across actual Python 3.11/3.13 jobs. The published v0.2.0/v0 tags were
+  not moved by this maintenance pass; pin Python for historical released hashes.
+  See [numerical guarantees and limits](docs/numerical-reproducibility.md).
+  Live PR-comment delivery, PyPI and real-provider execution remain unverified.
 - **Known low item:** issue #7's stale proving-check count was corrected and closed by PR #9;
   it never blocked the release.
 - **Release proof:** the prior 227-character Action description was corrected to 122 characters;
@@ -107,18 +112,26 @@ of this release slice.
 
 ## External reconciliation
 
-The global estate registry still has a stale entry for the old repository name and earlier
-runtime/human-todo posture. It must be corrected in its owning `claude-config` repository, not
-from this repository or this session. This repo's local tier declaration is the authority here.
+The prior checkpoint recorded a stale global estate entry for the old repository name and
+earlier runtime/human-todo posture. The maintenance pass did not inspect or modify that
+owner-machine registry. Reconcile it in its owning `claude-config` repository, not by assuming
+this local checkout controls it. This repo's local tier declaration is the authority here.
 
 ## Resume
 
-**Exact resume point:** GPL v0.2.0 and the `v0` transition are published and
-verified. Reconcile live state, then finish the Marketplace version-chooser UI
-task through the existing release editor when a UI runtime is available. Do not
-duplicate the release or move either tag. Next bounded maintenance scope is #69's
-observed cross-Python cost/hash drift; preserve fail-closed and unknown-cost semantics.
-Otherwise work only a verified failure, confirmed defect, or an
-observable `NEXT.md` trigger; if none
-exists, stop with this checkpoint rather than inventing PyPI, provider, scheduler, hook, or
-hosted-platform work.
+**Exact resume point:** reconcile live main, open PRs, reviews and exact-head CI first.
+PRs #78-#80 are merged. If the artifact-downloader runtime/integrity follow-up is
+still open, qualify its own current head before merging; otherwise use its posted
+receipt rather than reopening completed work. Do not redo the three repaired issues.
+
+Remaining bounded work is recorded in #30 (input-size and diagnostic-run/error-policy
+compatibility decisions), #35 (the explicitly deferred real-provider latency boundary),
+and #24 (a qualified, approved pinned consumer fixture pair before a report-only adapter).
+Use their latest reconciliation comments and [the maintenance receipt](docs/maintenance-78-80.md).
+Do not infer an implementation mandate from historical acceleration proposals.
+
+GPL v0.2.0 and the prior `v0` transition remain published release receipts, not permission
+for another unattended tag move. The Marketplace version-chooser task is the last recorded
+UI follow-up; re-check it when an appropriate UI runtime is available. Do not duplicate the
+release. Otherwise work only a verified failure, confirmed defect, or observable `NEXT.md`
+trigger rather than inventing PyPI, provider, scheduler, hook, or hosted-platform work.
