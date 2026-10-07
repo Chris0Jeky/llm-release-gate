@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Retain known response measurements after local processing failures, make partial
+  token/cost totals unavailable, and attribute failures to their processing stage.
+
 - Keep multiline workflow outputs literal, refuse command-file aliases to inputs
   or evidence, and enforce statuses as data rather than shell source.
 

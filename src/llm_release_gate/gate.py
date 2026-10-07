@@ -293,14 +293,16 @@ def build_report(
         notices.append("Request-bound replay checks fixture request identities for "
                        + ", ".join(bound_roles)
                        + "; hashes do not attest model execution or producer authenticity")
+    baseline_error_label = "item-processing errors" if baseline_run.n_processing_errors else "provider errors"
+    candidate_error_label = "item-processing errors" if candidate_run.n_processing_errors else "provider errors"
     if baseline_run.n_errors:
         notices.append(
-            f"baseline run had {baseline_run.n_errors}/{baseline_run.n_items} provider "
-            f"errors; baseline aggregates cover only the answered items"
+            f"baseline run had {baseline_run.n_errors}/{baseline_run.n_items} {baseline_error_label}; "
+            f"baseline aggregates cover only the answered items"
         )
     if candidate_run.n_errors:
         notices.append(
-            f"candidate run had {candidate_run.n_errors}/{candidate_run.n_items} provider errors"
+            f"candidate run had {candidate_run.n_errors}/{candidate_run.n_items} {candidate_error_label}"
         )
 
     metric_keys = sorted(set(baseline_run.aggregates) | set(candidate_run.aggregates))
