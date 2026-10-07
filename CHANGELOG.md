@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Add opt-in per-file `--max-input-bytes` limits to gate/run and the Action,
+  including transitive fixtures and an explicit manifest receipt.
+- Add `run --fail-on-errors`, preserving diagnostic output and the default exit
+  contract while allowing automation to reject any failed item with exit 2.
+
 ## 0.2.0 — 2026-10-02
 
 This GPL release aligns the current source, package identity and Action release.
