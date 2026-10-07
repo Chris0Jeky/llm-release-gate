@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+from collections.abc import Callable
 import ast
 import email.parser
 import hashlib
@@ -73,6 +74,96 @@ def verify_archives(directory: Path) -> Path:
     return wheel
 
 
+def smoke_replay_features(
+    run: Callable[..., subprocess.CompletedProcess[str]], temporary: Path,
+) -> None:
+    """Qualify additive CLI features through the caller's isolated wheel runner.
+
+    The fixture pair is explicitly synthetic. No live producer is called and no
+    historical response is relabeled. Source files supply inputs only; all CLI
+    execution uses the already installed wheel through ``run``.
+    """
+    example = PROJECT / "examples/request-bound-replay"
+    config = json.loads((example / "candidate.json").read_text(encoding="utf-8"))
+    fixture_path = example / "fixtures/candidate.json"
+    fixture = json.loads(fixture_path.read_text(encoding="utf-8"))
+
+    def write_config(name: str, value: dict) -> Path:
+        path = temporary / name
+        path.write_text(json.dumps(value), encoding="utf-8")
+        return path
+
+    # Planning must work before evidence exists and refuse to replace its receipt.
+    plan_config = json.loads(json.dumps(config))
+    plan_config["provider_options"]["fixtures"] = str(temporary / "not-collected.json")
+    assert not Path(plan_config["provider_options"]["fixtures"]).exists()
+    plan_path = write_config("plan-config.json", plan_config)
+    plan_out = temporary / "request-plan"
+    plan_args = ["-m", "llm_release_gate", "plan", "--dataset", str(example / "dataset.json"),
+                 "--config", str(plan_path), "--out", str(plan_out)]
+    run(*plan_args)
+    plan_bytes = (plan_out / "plan.json").read_bytes()
+    plan = json.loads(plan_bytes)
+    assert plan["schema_version"] == "lrg-request-plan/1"
+    actual = {item["item_id"]: item["request_sha256"] for item in plan["requests"]}
+    expected = {key: entry["request_sha256"]
+                for key, entry in fixture["responses"][config["model"]].items()}
+    assert len(plan["requests"]) == len(expected) and actual == expected, "plan request identities differ"
+    refusal = run(*plan_args, expected=2)
+    assert "plan output could not be created" in refusal.stderr
+    assert (plan_out / "plan.json").read_bytes() == plan_bytes, "plan receipt was overwritten"
+
+    args = ["-m", "llm_release_gate", "gate", "--require-request-binding"]
+    for key in ("dataset", "baseline", "candidate", "scorers", "thresholds"):
+        args.extend(("--" + key, str(example / (key + ".json"))))
+    valid_out = temporary / "bound-gate"
+    run(*args, "--out", str(valid_out), "--max-input-bytes", "1048576")
+    report = json.loads((valid_out / "report.json").read_text(encoding="utf-8"))
+    assert report["gate"]["verdict"] == "pass"
+    for role in ("baseline", "candidate"):
+        assert report["runs"][role]["provider"]["request_binding"] == "sha256-v1"
+    assert report["metrics"]["cost.total_usd"]["candidate"]["available"] is False
+
+    for case, message in (("stale", "request binding mismatch"),
+                          ("unbound", "requires fake provider request_binding"),
+                          ("oversize", "exceeds max input size")):
+        changed = json.loads(json.dumps(config))
+        changed["provider_options"]["fixtures"] = str(fixture_path)
+        if case == "stale":
+            changed["prompt"]["template"] += "\nThis instruction was not used for these fixtures."
+        elif case == "unbound":
+            del changed["provider_options"]["request_binding"]
+        invalid_args = list(args)
+        invalid_args[invalid_args.index("--candidate") + 1] = str(write_config(case + ".json", changed))
+        invalid_out = temporary / (case + "-output")
+        if case == "oversize":
+            invalid_args.extend(("--max-input-bytes", "1"))
+        refusal = run(*invalid_args, "--out", str(invalid_out), expected=2)
+        assert message in refusal.stderr and "Traceback" not in refusal.stderr, case
+        assert not invalid_out.exists(), f"{case} emitted output"
+
+    # Preserve a correctly bound error entry: the diagnostic flag changes exit
+    # status, not collection or the report payload. No cost/usage is invented.
+    responses = fixture["responses"][config["model"]]
+    first = next(iter(responses))
+    responses[first] = {"request_sha256": responses[first]["request_sha256"],
+                        "error": "synthetic installed-wheel probe"}
+    failed_fixture = write_config("failed-fixture.json", fixture)
+    config["provider_options"]["fixtures"] = str(failed_fixture)
+    failed_config = write_config("failed-config.json", config)
+    diagnostic_out = temporary / "diagnostic"
+    diagnostic_args = ["-m", "llm_release_gate", "run", "--dataset", str(example / "dataset.json"),
+                       "--config", str(failed_config), "--scorers", str(example / "scorers.json"),
+                       "--out", str(diagnostic_out), "--require-request-binding"]
+    run(*diagnostic_args)
+    diagnostics = (diagnostic_out / "run.json").read_bytes()
+    assert json.loads(diagnostics)["run"]["n_errors"] == 1
+    refusal = run(*diagnostic_args, "--fail-on-errors", expected=2)
+    assert "--fail-on-errors" in refusal.stderr and "Traceback" not in refusal.stderr
+    assert (diagnostic_out / "run.json").read_bytes() == diagnostics
+    print("Installed wheel plan/non-overwrite/bound/stale/downgrade/byte-limit/diagnostic: PASS")
+
+
 def smoke_wheel(wheel: Path) -> None:
     version = project_version()
     out = PROJECT / "out"
@@ -114,6 +205,7 @@ def smoke_wheel(wheel: Path) -> None:
             run(*args, expected=expected)
             report = json.loads((temporary / scenario / "report.json").read_text(encoding="utf-8"))
             assert report["gate"]["verdict"] == ("pass" if expected == 0 else "fail")
+        smoke_replay_features(run, temporary)
         print(f"Fresh offline wheel install/import/entrypoint/version/hash/green/red: PASS ({version})")
 
 

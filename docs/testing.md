@@ -154,3 +154,12 @@ now also runs this demo. The hosted matrix compares twelve report files plus a
 request plan and synthetic check receipt; the Action self-test adds bounded-input
 and required-binding acceptance/refusal. Earlier dated counts above remain
 historical measurements, not a count for current main.
+
+The package job's `scripts/verify_dist.py --smoke` also drives planning without
+fixtures, non-overwriting plans, bound replay, stale/downgrade/size refusal, and
+opt-in diagnostic failures through the installed wheel's isolated Python (`-I`).
+It retains the existing notice, metadata, zero-dependency and green/red checks.
+`tests/test_installed_smoke.py` mutation probes ensure wrong identities, generic
+exit-2 errors, overwritten plans and lost diagnostics cannot pass that verifier.
+Source example files are inputs only; subprocess imports must resolve inside the
+fresh virtual environment. See [qualification receipts](request-evidence-progress.md).
