@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Protect loaded inputs and existing report bundles with staged publication,
+  output-alias checks, cooperative locking and recoverable rollback.
+
 - Add no-execution `plan` output and opt-in `sha256-v1` replay binding to the
   fully rendered request; binding errors cannot be relaxed by error-rate rules.
 - Add CLI/Action binding requirements, report assurance disclosures, and a

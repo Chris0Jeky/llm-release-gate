@@ -65,6 +65,26 @@ def _read_json_source(fh, path: str, what: str) -> bytes:
 
 
 
+# Capture actual opened file identities only for the lifetime of a CLI invocation.
+# This also covers fixtures read indirectly by providers without changing their API.
+_INPUT_SOURCES: ContextVar[list[tuple[str, int, int]] | None] = ContextVar(
+    "input_sources", default=None,
+)
+
+
+@contextmanager
+def capture_input_sources() -> Iterator[None]:
+    token = _INPUT_SOURCES.set([])
+    try:
+        yield
+    finally:
+        _INPUT_SOURCES.reset(token)
+
+
+def loaded_input_sources() -> tuple[tuple[str, int, int], ...]:
+    return tuple(_INPUT_SOURCES.get() or ())
+
+
 def _open_regular_file(path: str, flags: int) -> int:
     # On POSIX, opening a FIFO can block before fstat can inspect it. Nonblocking
     # open has no effect on regular files; inspect the actual descriptor so a
@@ -83,6 +103,10 @@ def _load_json_file(path: str, what: str) -> tuple[Any, str]:
     try:
         with open(path, "rb", opener=_open_regular_file) as fh:
             source = _read_json_source(fh, path, what)
+            captured = _INPUT_SOURCES.get()
+            if captured is not None:
+                info = os.fstat(fh.fileno())
+                captured.append((os.path.normcase(os.path.realpath(path)), info.st_dev, info.st_ino))
     except FileNotFoundError as exc:
         raise GateConfigError(f"{what} file not found: {path}") from exc
     except (OSError, ValueError) as exc:
