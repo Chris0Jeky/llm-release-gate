@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Field-match scorer v3 checks field presence separately from literal values; an
+  absent field can no longer equal the legitimate string `<missing>`.
+
 - Retain known response measurements after local processing failures, make partial
   token/cost totals unavailable, and attribute failures to their processing stage.
 

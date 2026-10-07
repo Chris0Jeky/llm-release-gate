@@ -53,7 +53,7 @@ class KeywordQualityScorer(Scorer):
 
 class FieldMatchScorer(Scorer):
     name = "field_match"
-    version = "2"  # v2: JSON-strict equality (true != 1)
+    version = "3"  # v3: explicit field presence; v2: JSON-strict equality
     metrics = {
         "quality.pass_rate": {"direction": HIGHER, "kind": "rate", "mode": "pass_rate"},
     }
@@ -71,7 +71,10 @@ class FieldMatchScorer(Scorer):
             }
         mismatches = []
         for key, want in expected_fields.items():
-            got = output.json_obj.get(key, "<missing>")
+            if key not in output.json_obj:
+                mismatches.append(f"{key}: field is <missing>")
+                continue
+            got = output.json_obj[key]
             if not json_equal(got, want):
                 mismatches.append(f"{key}: expected {want!r}, got {got!r}")
         return {
