@@ -162,14 +162,13 @@ runs:
 
     - name: Enforce gate verdict
       shell: bash
+      env:
+        GATE_EXIT_CODE: ${{ steps.gate.outputs.cli-exit }}
       run: |
-        code="${{ steps.gate.outputs.cli-exit }}"
-        if [ "$code" = "0" ]; then
-          echo "gate passed"
-        elif [ "$code" = "1" ]; then
-          echo "::error::llm-release-gate blocked this change (material regression). See the PR comment / job summary."
-          exit 1
-        else
-          echo "::error::llm-release-gate could not evaluate (exit $code) — fix the gate configuration."
-          exit "${code:-2}"
-        fi
+        case "$GATE_EXIT_CODE" in
+          0) echo "gate passed" ;;
+          1) echo "::error::llm-release-gate blocked this change (material regression). See the PR comment / job summary."
+             exit 1 ;;
+          *) echo "::error::llm-release-gate could not evaluate; fix the gate configuration."
+             exit 2 ;;
+        esac

@@ -24,6 +24,7 @@ from . import TOOL_NAME, __version__
 from .errors import GateConfigError
 from .bundles import build_bundle_receipt, DEFAULT_MAX_BYTES
 from .gate import build_report
+from .github_io import emit_outputs, emit_summary, validate_command_files
 from .hashing import file_sha256
 from .loading import (
     load_dataset, load_pricing, load_run_config, load_scorer_config,
@@ -46,21 +47,12 @@ def _write(path: str, content: str) -> None:
     publish_documents({path: content})
 
 
-def _emit_github_outputs(pairs: dict) -> None:
-    output_path = os.environ.get("GITHUB_OUTPUT")
-    if not output_path:
-        return
-    with open(output_path, "a", encoding="utf-8") as fh:
-        for key, value in pairs.items():
-            fh.write(f"{key}={value}\n")
+def _emit_github_outputs(pairs: dict, report_paths=()) -> None:
+    emit_outputs(pairs, report_paths)
 
 
-def _emit_github_summary(markdown: str) -> None:
-    summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
-    if not summary_path:
-        return
-    with open(summary_path, "a", encoding="utf-8") as fh:
-        fh.write(markdown + "\n")
+def _emit_github_summary(markdown: str, report_paths=()) -> None:
+    emit_summary(markdown, report_paths)
 
 
 def _require_binding(config: RunConfig, required: bool) -> None:
@@ -121,6 +113,7 @@ def _cmd_gate(args: argparse.Namespace) -> int:
         os.path.basename(path): content.encode("utf-8") for path, content in documents.items()
     })
     documents[files["manifest"]] = json.dumps(manifest, indent=2, ensure_ascii=False) + "\n"
+    validate_command_files(files.values())
     publish_documents(documents)
 
     verdict = report["gate"]["verdict"]
@@ -140,7 +133,7 @@ def _cmd_gate(args: argparse.Namespace) -> int:
     print(f"  bundle hash: {manifest['bundle_integrity']['bundle_hash']}")
     print(f"  reports: {files['report_json']}, {files['report_md']}, {files['report_html']}")
 
-    _emit_github_summary(markdown)
+    _emit_github_summary(markdown, files.values())
     _emit_github_outputs({
         "verdict": verdict,
         "exit-code": str(exit_code),
@@ -149,7 +142,7 @@ def _cmd_gate(args: argparse.Namespace) -> int:
         "report-json": files["report_json"],
         "report-md": files["report_md"],
         "report-html": files["report_html"],
-    })
+    }, files.values())
     return exit_code
 
 
