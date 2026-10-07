@@ -13,11 +13,56 @@ import json
 import math
 import os
 import stat
+from contextlib import contextmanager
+from contextvars import ContextVar
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
 from .errors import GateConfigError
 from .hashing import json_source_sha256
+
+
+
+# Context-local rather than process-global: nested calls and later CLI invocations
+# must not inherit a prior caller's limit. Provider factory signatures stay stable.
+_INPUT_BYTE_LIMIT: ContextVar[Optional[int]] = ContextVar("input_byte_limit", default=None)
+
+
+@contextmanager
+def input_byte_limit(max_bytes: Optional[int]) -> Iterator[None]:
+    """Bound each JSON source read in this context; None preserves legacy behavior.
+
+    This is a per-file raw-byte limit, not a total-run or parsed-object memory cap.
+    The runner is synchronous; out-of-tree worker threads must set their own scope.
+    """
+    if max_bytes is not None and (type(max_bytes) is not int or max_bytes <= 0):
+        raise GateConfigError("max input bytes must be a positive integer")
+    token = _INPUT_BYTE_LIMIT.set(max_bytes)
+    try:
+        yield
+    finally:
+        _INPUT_BYTE_LIMIT.reset(token)
+
+
+def _read_json_source(fh, path: str, what: str) -> bytes:
+    limit = _INPUT_BYTE_LIMIT.get()
+    if limit is None:
+        return fh.read()
+    # Read at most limit+1 bytes, in bounded chunks, from the already verified
+    # descriptor. Do not trust a prior path stat (or allocate 'limit' bytes up front).
+    chunks = []
+    remaining = limit + 1
+    while remaining:
+        chunk = fh.read(min(65536, remaining))
+        if not chunk:
+            break
+        chunks.append(chunk)
+        remaining -= len(chunk)
+    if remaining == 0:
+        raise GateConfigError(f"{what} {path}: exceeds max input size of {limit} bytes")
+    return b"".join(chunks)
+
 
 
 def _open_regular_file(path: str, flags: int) -> int:
@@ -37,7 +82,7 @@ def _open_regular_file(path: str, flags: int) -> int:
 def _load_json_file(path: str, what: str) -> tuple[Any, str]:
     try:
         with open(path, "rb", opener=_open_regular_file) as fh:
-            source = fh.read()
+            source = _read_json_source(fh, path, what)
     except FileNotFoundError as exc:
         raise GateConfigError(f"{what} file not found: {path}") from exc
     except (OSError, ValueError) as exc:

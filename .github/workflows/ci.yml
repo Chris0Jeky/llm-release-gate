@@ -64,6 +64,7 @@ jobs:
           thresholds: examples/rag-support-bot/thresholds.json
           pricing: examples/pricing.json
           out: out/action-green
+          max-input-bytes: "1048576"
           comment: "false"
 
       - name: Gate the deliberate regression (must fail)
@@ -80,12 +81,30 @@ jobs:
           out: out/action-red
           comment: "false"
 
+      - name: Reject an oversized input (must not produce a verdict)
+        id: oversize
+        continue-on-error: true
+        uses: ./
+        with:
+          dataset: examples/rag-support-bot/dataset.json
+          baseline: examples/rag-support-bot/baseline.json
+          candidate: examples/rag-support-bot/candidate.json
+          scorers: examples/rag-support-bot/scorers.json
+          thresholds: examples/rag-support-bot/thresholds.json
+          out: out/action-oversize
+          max-input-bytes: "1"
+          comment: "false"
+
       - name: Assert outcomes
         run: |
           test "${{ steps.green.outputs.verdict }}" = "pass"
           test "${{ steps.red.outcome }}" = "failure"
           test "${{ steps.red.outputs.verdict }}" = "fail"
-          echo "action self-test OK: green passed, red was blocked"
+          test "${{ steps.oversize.outcome }}" = "failure"
+          test -z "${{ steps.oversize.outputs.verdict }}"
+          test -z "${{ steps.oversize.outputs.report-json }}"
+          test ! -e out/action-oversize/report.json
+          echo "action self-test OK: bounded green passed, red blocked, oversized input refused"
 
   report-reproducibility:
     needs: test

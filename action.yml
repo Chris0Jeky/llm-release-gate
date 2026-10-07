@@ -27,6 +27,10 @@ inputs:
     description: "Path to the pricing-table JSON (omit: cost reported unavailable)"
     required: false
     default: ""
+  max-input-bytes:
+    description: "Maximum raw bytes per JSON input including fixtures (empty: unlimited)"
+    required: false
+    default: ""
   out:
     description: "Output directory for reports and the run manifest"
     required: false
@@ -88,6 +92,7 @@ runs:
         IN_THRESHOLDS: ${{ inputs.thresholds }}
         IN_PRICING: ${{ inputs.pricing }}
         IN_OUT: ${{ inputs.out }}
+        IN_MAX_INPUT_BYTES: ${{ inputs.max-input-bytes }}
       run: |
         set +e
         args=(
@@ -100,6 +105,9 @@ runs:
         )
         if [ -n "$IN_PRICING" ]; then
           args+=(--pricing "$IN_PRICING")
+        fi
+        if [ -n "$IN_MAX_INPUT_BYTES" ]; then
+          args+=(--max-input-bytes "$IN_MAX_INPUT_BYTES")
         fi
         python -m llm_release_gate gate "${args[@]}"
         code=$?

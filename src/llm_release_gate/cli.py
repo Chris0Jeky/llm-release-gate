@@ -26,7 +26,7 @@ from .gate import build_report
 from .hashing import file_sha256
 from .loading import (
     load_dataset, load_pricing, load_run_config, load_scorer_config,
-    load_thresholds, no_pricing,
+    load_thresholds, no_pricing, input_byte_limit,
 )
 from .manifest import build_manifest
 from .reports.html import render_html
@@ -98,6 +98,8 @@ def _cmd_gate(args: argparse.Namespace) -> int:
         },
         report_files=files,
     )
+    if args.max_input_bytes is not None:
+        manifest["execution_options"] = {"max_input_bytes": args.max_input_bytes}
     _write(files["manifest"], json.dumps(manifest, indent=2, ensure_ascii=False) + "\n")
 
     verdict = report["gate"]["verdict"]
@@ -149,6 +151,10 @@ def _cmd_run(args: argparse.Namespace) -> int:
     _write(out_path, json.dumps(payload, indent=2, ensure_ascii=False) + "\n")
     print(f"{TOOL_NAME}: ran '{cfg.name}' on {result.n_items} items "
           f"({result.n_ok} ok, {result.n_errors} errors) -> {out_path}")
+    if args.fail_on_errors and result.n_errors:
+        print(f"{TOOL_NAME}: --fail-on-errors: {result.n_errors} item(s) failed; "
+              f"diagnostics retained in {out_path}", file=sys.stderr)
+        return EXIT_ERROR
     return EXIT_PASS
 
 
@@ -158,6 +164,17 @@ def _cmd_hash(args: argparse.Namespace) -> int:
             raise GateConfigError(f"file not found: {path}")
         print(f"{file_sha256(path)}  {path}")
     return EXIT_PASS
+
+
+
+def _positive_bytes(value: str) -> int:
+    try:
+        parsed = int(value)
+    except ValueError:
+        parsed = 0
+    if parsed <= 0:
+        raise argparse.ArgumentTypeError("max input bytes must be a positive integer")
+    return parsed
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -177,6 +194,8 @@ def build_parser() -> argparse.ArgumentParser:
     gate.add_argument("--thresholds", required=True, help="thresholds JSON")
     gate.add_argument("--pricing", help="pricing-table JSON (omit: cost reported unavailable)")
     gate.add_argument("--out", default="out", help="output directory (default: out)")
+    gate.add_argument("--max-input-bytes", type=_positive_bytes,
+                      help="maximum raw bytes per JSON input, including fixtures (default: unlimited)")
     gate.set_defaults(func=_cmd_gate)
 
     run = sub.add_parser("run", help="run one config over the dataset (fixture debugging)")
@@ -185,6 +204,10 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--scorers", required=True)
     run.add_argument("--pricing")
     run.add_argument("--out", default="out")
+    run.add_argument("--max-input-bytes", type=_positive_bytes,
+                     help="maximum raw bytes per JSON input, including fixtures (default: unlimited)")
+    run.add_argument("--fail-on-errors", action="store_true",
+                     help="exit 2 if any item fails, after writing run.json (default: diagnostic exit 0)")
     run.set_defaults(func=_cmd_run)
 
     hash_cmd = sub.add_parser("hash", help="print sha256 content hashes for files")
@@ -198,7 +221,8 @@ def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
     try:
-        return args.func(args)
+        with input_byte_limit(getattr(args, "max_input_bytes", None)):
+            return args.func(args)
     except GateConfigError as exc:
         print(f"{TOOL_NAME}: configuration error: {exc}", file=sys.stderr)
         return EXIT_ERROR

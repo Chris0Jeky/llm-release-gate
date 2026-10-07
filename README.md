@@ -146,6 +146,18 @@ owner explicitly approved this strict GPL release and the `v0` transition.
 Immutable v0.1.2 and earlier MIT releases retain their previously granted rights.
 Pin those historical tags if MIT is required. See [CHANGELOG.md](CHANGELOG.md).
 
+## Opt-in automation controls (unreleased main)
+
+`gate` and `run` accept `--max-input-bytes N`, limiting **each** JSON input,
+including referenced replay fixtures, before parsing. Omission retains the
+unlimited legacy behavior. The Action exposes the equivalent `max-input-bytes`
+input (empty by default). A limit violation exits 2, not a release verdict.
+
+`run --fail-on-errors` retains its diagnostic `run.json` but exits 2 when any
+item fails. Plain `run` still exits 0 after writing diagnostics; use `gate` for
+release policy. Neither option changes default thresholds or report hashes.
+See [automation controls](docs/automation-controls.md) for limits and examples.
+
 ## Examples
 
 - `examples/rag-support-bot/` — RAG application; prompt improvement, **passes**
