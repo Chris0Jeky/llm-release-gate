@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Add read-only consumer-policy audits of verified stored aggregates, with optional
+  evidence/policy pins and separate original/new verdicts. Reject malformed direct
+  evaluator inputs before computing policy outcomes.
+
 - Field-match scorer v3 checks field presence separately from literal values; an
   absent field can no longer equal the legitimate string `<missing>`.
 

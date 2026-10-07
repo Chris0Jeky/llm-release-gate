@@ -5,15 +5,24 @@ repository policy; live evidence always wins.
 
 ## Current checkpoint
 
+- **Consumer-policy progress:** independently merged #88 was reconciled before
+  this pass. #89 and #90 are merged, repairing lost post-response measurements
+  and the field-match sentinel false positive. Field-match is now version 3;
+  extraction hashes change deliberately. See [receipts](docs/consumer-policy-progress.md).
+- **Current feature:** read-only offline policy audit applies an explicit consumer
+  policy to a verified in-memory aggregate snapshot. Reconcile its PR/head and
+  final CI receipt before treating it as qualified; older runs do not prove it.
+  It does not rerun models/scorers or claim source truth, freshness or authenticity.
+
+
 - **Authority:** T2 `daily-driver` in `.agent-harness/tier.json`; push/merge only
   after the repository gate. No new owner-machine or runtime authority is implied.
 - **Merged maintenance:** #78-#86 are integrated. #85 protects inputs and prior
   outputs during publication. #86 adds offline bundle receipts/verification and
   trusted pins without claiming authenticity or re-evaluating policy. Their exact
   heads, merge SHAs and CI are in [integrity progress](docs/evidence-integrity-progress.md).
-- **Current follow-up:** command-file transport, alias checks and literal Action
-  status enforcement have regression coverage. Reconcile that PR's current head,
-  hosted runner checks and final receipt before treating it as merged/qualified.
+- **Completed transport follow-up:** #87's command-file transport, alias checks
+  and literal Action enforcement are merged and retain their prior CI receipt.
 - **Prior capabilities:** #82 resolved #30 via opt-in byte limits and diagnostic
   failure exits. #83 added offline plans/request-bound replay; #84 qualified their
   installed-wheel path. [Prior receipts](docs/request-evidence-progress.md) are
@@ -113,9 +122,9 @@ this local checkout controls it. This repo's local tier declaration is the autho
 ## Resume
 
 **Exact resume point:** reconcile live main, open PRs, reviews and exact-head CI first.
-PRs #78-#86 are merged. Reconcile the command transport follow-up and any later
+PRs #78-#90 are merged. Reconcile the consumer-policy audit follow-up and any later
 review findings against its exact head, then use the final main-push receipt.
-[Integrity progress](docs/evidence-integrity-progress.md) is the current handoff.
+[Consumer-policy progress](docs/consumer-policy-progress.md) is the current handoff.
 Do not repeat completed repairs or treat prior CI as proof for later code.
 
 #30 is now resolved through the opt-in API in #82. Remaining entry-gated work is

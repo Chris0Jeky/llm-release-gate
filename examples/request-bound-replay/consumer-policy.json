@@ -1,0 +1,7 @@
+{
+  "_note": "Consumer policy: quality must pass and recorded cost must be available below the ceiling. The synthetic bound example omits cost, so this policy intentionally refuses its otherwise passing evidence.",
+  "rules": [
+    {"metric": "quality.pass_rate", "min_value": 1},
+    {"metric": "cost.total_usd", "max_value": 0.1}
+  ]
+}

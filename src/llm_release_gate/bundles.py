@@ -193,11 +193,11 @@ def _check_report_and_manifest(report: dict, manifest: dict) -> str:
     return result_hash
 
 
-def verify_bundle(
+def _verified_bundle_snapshot(
     directory: str | os.PathLike[str], *, expected_result_hash: str | None = None,
     expected_bundle_hash: str | None = None, max_input_bytes: int = DEFAULT_MAX_BYTES,
-) -> dict:
-    """Read four fixed artifact names; return integrity evidence, not a new verdict."""
+) -> tuple[dict, dict]:
+    """Read and verify once; retain the exact decoded report for internal consumers."""
     if expected_result_hash is not None:
         _digest(expected_result_hash, 'expected result hash')
     if expected_bundle_hash is not None:
@@ -246,7 +246,7 @@ def verify_bundle(
                 raise GateConfigError(f'bundle artifact changed during verification: {name}')
     except OSError as exc:
         raise GateConfigError('bundle changed during verification') from exc
-    return {
+    proof = {
         'schema_version': 'lrg-bundle-verification/1',
         'integrity': 'verified',
         'gate_verdict': report['gate']['verdict'],
@@ -261,3 +261,16 @@ def verify_bundle(
         'limitations': ['Content consistency is not producer authenticity or proof of model execution.',
                         'Input sources, scoring, policy correctness and freshness were not independently verified.'],
     }
+    return proof, report
+
+
+def verify_bundle(
+    directory: str | os.PathLike[str], *, expected_result_hash: str | None = None,
+    expected_bundle_hash: str | None = None, max_input_bytes: int = DEFAULT_MAX_BYTES,
+) -> dict:
+    """Read four fixed artifact names; return integrity evidence, not a new verdict."""
+    proof, _ = _verified_bundle_snapshot(
+        directory, expected_result_hash=expected_result_hash,
+        expected_bundle_hash=expected_bundle_hash, max_input_bytes=max_input_bytes,
+    )
+    return proof

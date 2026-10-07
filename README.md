@@ -184,6 +184,17 @@ rewrite; the Action exposes both hashes. An intact failed gate is not a passing
 verdict: use `--require-pass` to return exit 1 for its recorded failure.
 See [bundle verification](docs/bundle-verification.md) for the trust and resource limits.
 
+## Consumer-policy audit (unreleased main)
+
+`audit --bundle received-gate --thresholds trusted-policy.json --json` applies an
+explicit consumer policy to verified stored aggregates, without rerunning models
+or scorers. It keeps the original gate verdict separate from the new policy
+verdict. Result, bundle and exact policy-file hash pins can be supplied independently.
+
+The synthetic example's [consumer policy](examples/request-bound-replay/consumer-policy.json)
+requires available cost and therefore rejects its otherwise passing quality gate.
+This is not source validation or producer authenticity. See [policy audit](docs/policy-audit.md).
+
 ## Examples
 
 - `examples/request-bound-replay/` — explicitly synthetic bound replay, plus stale-request refusal

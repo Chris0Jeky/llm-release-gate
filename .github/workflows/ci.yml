@@ -155,6 +155,34 @@ jobs:
             --expected-bundle-hash "$EXPECTED_BUNDLE_HASH" \
             --expected-result-hash "$EXPECTED_RESULT_HASH" --require-pass --json
 
+      - name: Audit the pinned bundle under an independent consumer policy
+        env:
+          EXPECTED_BUNDLE_HASH: ${{ steps.bound.outputs.bundle-hash }}
+          EXPECTED_RESULT_HASH: ${{ steps.bound.outputs.result-hash }}
+        run: |
+          policy=examples/request-bound-replay/consumer-policy.json
+          EXPECTED_POLICY_HASH=$(python -m llm_release_gate hash "$policy" | cut -d ' ' -f 1)
+          set +e
+          python -m llm_release_gate audit --bundle out/action-bound \
+            --thresholds "$policy" --expected-policy-hash "$EXPECTED_POLICY_HASH" \
+            --expected-bundle-hash "$EXPECTED_BUNDLE_HASH" \
+            --expected-result-hash "$EXPECTED_RESULT_HASH" --json > "$RUNNER_TEMP/consumer-audit.json"
+          code=$?
+          set -e
+          test "$code" -eq 1
+          python - "$RUNNER_TEMP/consumer-audit.json" <<'PYCODE'
+          import json, sys
+          with open(sys.argv[1], encoding='utf-8') as source:
+              audit = json.load(source)
+          assert audit['recorded_gate_verdict'] == 'pass'
+          assert audit['policy_verdict'] == 'fail'
+          assert all(audit['external_pins'].values())
+          assert audit['scores_recomputed'] is False
+          cost = next(rule for rule in audit['rules'] if rule['metric'] == 'cost.total_usd')
+          assert cost['checks'][0]['status'] == 'unavailable'
+          print('Pinned consumer policy refused a passing bundle with unavailable cost: PASS')
+          PYCODE
+
       - name: Assert outcomes
         run: |
           test "${{ steps.green.outputs.verdict }}" = "pass"

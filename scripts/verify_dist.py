@@ -133,6 +133,24 @@ def smoke_replay_features(
     assert verification["integrity"] == "verified" and verification["gate_verdict"] == "pass"
     assert verification["external_pins"] == {"result_hash": True, "bundle_hash": True}
     assert verification["authenticity_verified"] is False
+    consumer_policy = example / "consumer-policy.json"
+    policy_hash = "sha256:" + hashlib.sha256(consumer_policy.read_bytes()).hexdigest()
+    audit_args = ["-m", "llm_release_gate", "audit", "--bundle", str(valid_out),
+                  "--thresholds", str(consumer_policy), "--expected-policy-hash", policy_hash,
+                  "--expected-result-hash", report["result_hash"],
+                  "--expected-bundle-hash", manifest["bundle_integrity"]["bundle_hash"], "--json"]
+    audited = json.loads(run(*audit_args, expected=1).stdout)
+    assert audited["recorded_gate_verdict"] == "pass" and audited["policy_verdict"] == "fail"
+    assert audited["external_pins"] == {"result_hash": True, "bundle_hash": True, "policy_hash": True}
+    assert audited["scores_recomputed"] is False and audited["authenticity_verified"] is False
+    cost_rule = next(rule for rule in audited["rules"] if rule["metric"] == "cost.total_usd")
+    assert cost_rule["checks"][0]["status"] == "unavailable"
+    bad_pin_args = list(audit_args)
+    bad_pin_args[bad_pin_args.index("--expected-policy-hash") + 1] = "sha256:" + "0" * 64
+    refusal = run(*bad_pin_args, expected=2)
+    assert "expected policy hash" in refusal.stderr and "Traceback" not in refusal.stderr
+    print("Installed wheel pinned consumer-policy audit and wrong-policy refusal: PASS")
+
     original_markdown = (valid_out / "report.md").read_bytes()
     (valid_out / "report.md").write_bytes(original_markdown + b"tampered")
     refusal = run(*verify_args, expected=2)
