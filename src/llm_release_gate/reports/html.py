@@ -137,10 +137,12 @@ def render_html(report: dict) -> str:
 
     runs = report["runs"]
     b, c = runs["baseline"], runs["candidate"]
+    b_errors = "item-processing errors" if b.get("n_processing_errors") else "provider errors"
+    c_errors = "item-processing errors" if c.get("n_processing_errors") else "provider errors"
     out.append(
         f"<p class=\"note\">Samples: baseline answered {b['n_ok']}/{b['n_items']} items "
-        f"({b['n_errors']} provider errors); candidate answered {c['n_ok']}/{c['n_items']} "
-        f"({c['n_errors']} provider errors).</p>"
+        f"({b['n_errors']} {b_errors}); candidate answered {c['n_ok']}/{c['n_items']} "
+        f"({c['n_errors']} {c_errors}).</p>"
     )
 
     out.append("<h2>Items</h2><table>")

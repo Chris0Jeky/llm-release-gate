@@ -1,9 +1,10 @@
 """Run one configuration over the dataset and aggregate what actually happened.
 
 Provider failures are recorded per item and the run continues; failed items are
-excluded from score/latency/token/cost aggregates (their absence is visible in
-errors.error_rate, which the gate checks by default) and every aggregate carries
-the sample count it was computed over.
+excluded from score/latency aggregates. A post-response processing failure retains
+its returned measurements but makes token/cost totals unavailable, rather than
+presenting surviving-item sums as complete. Every aggregate carries its sample
+count; errors.error_rate remains governed by the existing threshold policy.
 """
 
 from __future__ import annotations
@@ -39,12 +40,14 @@ class ItemRecord:
     cost_note: Optional[str] = None
     scores: dict = field(default_factory=dict)  # metric_key -> item_result
 
+    error_stage: Optional[str] = None  # non-provider failure: request/response/pricing/parse/score
+
     def __post_init__(self) -> None:
         self.prompt_tokens = normalize_token_count(self.prompt_tokens)
         self.completion_tokens = normalize_token_count(self.completion_tokens)
 
     def to_dict(self) -> dict:
-        return {
+        payload = {
             "item_id": self.item_id,
             "status": self.status,
             "error": self.error,
@@ -59,6 +62,9 @@ class ItemRecord:
             "cost_note": self.cost_note,
             "scores": self.scores,
         }
+        if self.error_stage is not None:
+            payload["error_stage"] = self.error_stage
+        return payload
 
 
 @dataclass
@@ -81,8 +87,12 @@ class RunResult:
     def n_errors(self) -> int:
         return sum(1 for r in self.records if r.status == "error")
 
+    @property
+    def n_processing_errors(self) -> int:
+        return sum(r.status == "error" and r.error_stage is not None for r in self.records)
+
     def summary(self) -> dict:
-        return {
+        summary = {
             "config_name": self.config.name,
             "provider": self.provider_info,
             "model": self.config.model,
@@ -92,6 +102,9 @@ class RunResult:
             "n_errors": self.n_errors,
             "aggregates": self.aggregates,
         }
+        if self.n_processing_errors:
+            summary["n_processing_errors"] = self.n_processing_errors
+        return summary
 
 
 def run_config(
@@ -106,48 +119,41 @@ def run_config(
 
     records: list[ItemRecord] = []
     for item in dataset.items:
+        # A fresh record per item avoids reusing a previous response on failure.
+        record = ItemRecord(item_id=item.id, status="error")
+        stage = "request"
         try:
             request = adapter.build_request(item, config)
-            try:
-                result = provider.complete(request)
-            except ProviderError as exc:
-                records.append(ItemRecord(item_id=item.id, status="error", error=str(exc)))
-                continue
+            stage = "provider"
+            result = provider.complete(request)
+            stage = "response"
+            record.text = result.text
+            record.prompt_tokens = normalize_token_count(result.prompt_tokens)
+            record.completion_tokens = normalize_token_count(result.completion_tokens)
+            record.latency_ms = result.latency_ms
+            # Capture consumption before parsing/scoring can fail. No raw provider
+            # payload is copied; missing/invalid token counts remain unknown.
+            stage = "pricing"
+            record.cost_note = "pricing did not complete"
+            record.cost_usd, record.cost_note = item_cost_usd(result, pricing)
+            stage = "parse"
             parsed = adapter.parse(result.text, item)
-            cost, cost_note = item_cost_usd(result, pricing)
+            record.abstained = parsed.abstained
+            record.citations = parsed.citations
+            record.parse_error = parsed.parse_error
+            stage = "score"
             scores: dict = {}
             for scorer in scorers:
                 scores.update(scorer.score_item(item, parsed))
-            records.append(
-                ItemRecord(
-                    item_id=item.id,
-                    status="ok",
-                    text=result.text,
-                    abstained=parsed.abstained,
-                    citations=parsed.citations,
-                    parse_error=parsed.parse_error,
-                    prompt_tokens=result.prompt_tokens,
-                    completion_tokens=result.completion_tokens,
-                    latency_ms=result.latency_ms,
-                    cost_usd=cost,
-                    cost_note=cost_note,
-                    scores=scores,
-                )
-            )
+            record.scores = scores
+            record.status = "ok"
         except GateConfigError:
             raise
-        except ProviderError as exc:
-            records.append(ItemRecord(item_id=item.id, status="error", error=str(exc)))
-            continue
         except Exception as exc:
-            records.append(
-                ItemRecord(
-                    item_id=item.id,
-                    status="error",
-                    error=f"{type(exc).__name__}: {exc}",
-                )
-            )
-            continue
+            record.error = str(exc) if isinstance(exc, ProviderError) else f"{type(exc).__name__}: {exc}"
+            if stage != "provider":
+                record.error_stage = stage
+        records.append(record)
 
     aggregates = _aggregate(records, scorers)
     return RunResult(
@@ -232,6 +238,16 @@ def _aggregate(records: list[ItemRecord], scorers: list[Scorer]) -> dict:
                 f"no cost for {len(ok) - len(with_cost)} of {len(ok)} "
                 f"answered items: {'; '.join(reasons)}"
             )
+        aggregates["cost.total_usd"] = unavailable_metric("usd", LOWER, reason)
+
+    post_response_errors = sum(
+        r.status == "error" and r.error_stage in ("response", "pricing", "parse", "score")
+        for r in records
+    )
+    if post_response_errors:
+        reason = (f"totals unavailable after {post_response_errors} post-response "
+                  "item-processing errors; per-item measurements retained when available")
+        aggregates["tokens.total"] = unavailable_metric("tokens", LOWER, reason)
         aggregates["cost.total_usd"] = unavailable_metric("usd", LOWER, reason)
 
     return aggregates
