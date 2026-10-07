@@ -124,6 +124,21 @@ def smoke_replay_features(
         assert report["runs"][role]["provider"]["request_binding"] == "sha256-v1"
     assert report["metrics"]["cost.total_usd"]["candidate"]["available"] is False
 
+    manifest = json.loads((valid_out / "manifest.json").read_text(encoding="utf-8"))
+    verify_args = ["-m", "llm_release_gate", "verify", "--bundle", str(valid_out),
+                   "--expected-result-hash", report["result_hash"],
+                   "--expected-bundle-hash", manifest["bundle_integrity"]["bundle_hash"],
+                   "--require-pass", "--json"]
+    verification = json.loads(run(*verify_args).stdout)
+    assert verification["integrity"] == "verified" and verification["gate_verdict"] == "pass"
+    assert verification["external_pins"] == {"result_hash": True, "bundle_hash": True}
+    assert verification["authenticity_verified"] is False
+    original_markdown = (valid_out / "report.md").read_bytes()
+    (valid_out / "report.md").write_bytes(original_markdown + b"tampered")
+    refusal = run(*verify_args, expected=2)
+    assert "digest or size mismatch" in refusal.stderr and "Traceback" not in refusal.stderr
+    (valid_out / "report.md").write_bytes(original_markdown)
+
     for case, message in (("stale", "request binding mismatch"),
                           ("unbound", "requires fake provider request_binding"),
                           ("oversize", "exceeds max input size")):
@@ -161,7 +176,7 @@ def smoke_replay_features(
     refusal = run(*diagnostic_args, "--fail-on-errors", expected=2)
     assert "--fail-on-errors" in refusal.stderr and "Traceback" not in refusal.stderr
     assert (diagnostic_out / "run.json").read_bytes() == diagnostics
-    print("Installed wheel plan/non-overwrite/bound/stale/downgrade/byte-limit/diagnostic: PASS")
+    print("Installed wheel plan/non-overwrite/bound/stale/downgrade/byte-limit/diagnostic/bundle-verification: PASS")
 
 
 def smoke_wheel(wheel: Path) -> None:

@@ -171,6 +171,19 @@ proves valid synthetic replay passes and stale evidence is refused with exit 2.
 Binding is content consistency, **not proof of model execution or authenticity**.
 See [the request-binding contract](docs/request-binding.md) before collecting evidence.
 
+## Evidence integrity (unreleased main)
+
+Gate outputs are staged before publication and cannot replace loaded inputs or
+fixtures. Caught write failures restore prior artifacts; interrupted rollback
+retains recovery files and a lock. See [output safety](docs/output-safety.md).
+
+`verify --bundle out/my-gate --json` checks a completed bundle offline, without
+rerunning a model or following stored source paths. Add trusted
+`--expected-result-hash` / `--expected-bundle-hash` pins to detect a complete
+rewrite; the Action exposes both hashes. An intact failed gate is not a passing
+verdict: use `--require-pass` to return exit 1 for its recorded failure.
+See [bundle verification](docs/bundle-verification.md) for the trust and resource limits.
+
 ## Examples
 
 - `examples/request-bound-replay/` — explicitly synthetic bound replay, plus stale-request refusal

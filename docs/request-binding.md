@@ -149,10 +149,11 @@ are included.
 bound gate passes, a prompt mutation with the same fixtures is refused with exit 2,
 and plans are output-location independent. It saves this demo's three reports, its plan and a small synthetic check receipt
 for cross-version CI comparison.
-The demo can be repeated; it replaces only its five named demo artifacts, not
+The demo can be repeated; it replaces only its six named demo artifacts, not
 arbitrary directories. The `plan` command itself remains non-overwriting.
 
 `make ci` includes this check. Hosted Python 3.11 and 3.13 compare all four demos'
-twelve reports plus the plan/check receipt byte for byte. Actual Action tests
+twelve reports plus the plan/check receipt byte for byte. The copied manifest
+is volatile and is not part of that comparison. Actual Action tests
 cover a bound pass and refusal of legacy configs when binding is required.
 Existing legacy green/red reports and hashes remain unchanged.

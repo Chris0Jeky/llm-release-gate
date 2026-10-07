@@ -163,3 +163,16 @@ It retains the existing notice, metadata, zero-dependency and green/red checks.
 exit-2 errors, overwritten plans and lost diagnostics cannot pass that verifier.
 Source example files are inputs only; subprocess imports must resolve inside the
 fresh virtual environment. See [qualification receipts](request-evidence-progress.md).
+
+## Publication and transferred-bundle integrity (unreleased main)
+
+`tests/test_output_safety.py` reproduces input/output alias destruction, late-render
+failures, write failures at every replacement position, and incomplete rollback.
+`tests/test_bundle_verification.py` checks exact artifact and canonical manifest
+hashes, strict decoding, pin mismatches, filesystem boundaries, relocation, and
+the separation of integrity from a recorded policy verdict.
+
+`make verify-demo` generates and checks all four bundles. `make ci` includes the
+same checks. The actual Action self-test checks emitted result/bundle hash pins;
+fresh-wheel acceptance exercises successful verification and tamper refusal.
+See [bundle verification](bundle-verification.md) for what is and is not proven.

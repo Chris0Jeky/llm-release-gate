@@ -54,9 +54,9 @@ def exercise(out: Path) -> None:
         if (work / "stale").exists():
             raise RuntimeError("stale evidence produced output")
 
-        # Publish only completed deterministic demo artifacts, not temporary manifests.
+        # Copy the completed bundle, including its volatile manifest, plus deterministic demo receipts.
         out.mkdir(parents=True, exist_ok=True)
-        for name in ("report.json", "report.md", "report.html"):
+        for name in ("report.json", "report.md", "report.html", "manifest.json"):
             shutil.copyfile(work / "valid" / name, out / name)
         shutil.copyfile(work / "plan-a/plan.json", out / "plan.json")
         receipt = {"synthetic": True, "valid_exit": valid_exit, "stale_exit": stale_exit,
