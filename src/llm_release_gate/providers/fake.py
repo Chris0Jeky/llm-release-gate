@@ -88,7 +88,7 @@ class FakeProvider(Provider):
         if self.request_binding and data.get("version") != "1":
             raise GateConfigError("fake provider request binding requires fixture version '1'")
         _validate_fixtures(data["responses"], path)
-        self.fixtures_path = path
+
         # The config-relative reference (what the run config actually wrote). Unlike
         # the resolved absolute path, it is stable across checkout locations, so it is
         # safe to surface in per-item error messages that land in report.json.
