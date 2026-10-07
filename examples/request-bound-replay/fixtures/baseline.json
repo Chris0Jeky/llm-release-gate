@@ -1,0 +1,16 @@
+{
+  "version": "1",
+  "_note": "Synthetic, hand-authored test responses. No model was called. Usage and latency are unmeasured.",
+  "responses": {
+    "synthetic-bound-v1": {
+      "return-window": {
+        "request_sha256": "sha256:751ad4cbf58d6c026144848f05e3d6a29e9bc4410f7070132a385b232b3db16a",
+        "text": "Returns are accepted within 14 days. [doc:policy]"
+      },
+      "phone-support": {
+        "request_sha256": "sha256:2ac6c80c24cbb3666b52b118b4de37f4fdbb38eb7229c45f4e5599ae52bfdf4c",
+        "text": "I don't know; the supplied source does not cover Sunday phone support."
+      }
+    }
+  }
+}

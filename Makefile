@@ -3,7 +3,7 @@
 
 PY ?= python
 
-.PHONY: install test demo-green demo-red demo ci clean
+.PHONY: install test demo-green demo-red demo demo-bound ci clean
 
 install:
 	$(PY) -m pip install -e ".[dev]"
@@ -53,7 +53,10 @@ demo-red:
 
 demo: demo-green demo-red
 
-ci: test demo
+demo-bound:
+	$(PY) scripts/check_request_binding.py
+
+ci: test demo demo-bound
 
 clean:
 	rm -rf out .pytest_cache

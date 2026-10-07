@@ -31,6 +31,10 @@ inputs:
     description: "Maximum raw bytes per JSON input including fixtures (empty: unlimited)"
     required: false
     default: ""
+  require-request-binding:
+    description: "Require sha256-v1 request-bound replay in both run configs ('true'/'false')"
+    required: false
+    default: "false"
   out:
     description: "Output directory for reports and the run manifest"
     required: false
@@ -93,6 +97,7 @@ runs:
         IN_PRICING: ${{ inputs.pricing }}
         IN_OUT: ${{ inputs.out }}
         IN_MAX_INPUT_BYTES: ${{ inputs.max-input-bytes }}
+        IN_REQUIRE_BINDING: ${{ inputs.require-request-binding }}
       run: |
         set +e
         args=(
@@ -109,6 +114,12 @@ runs:
         if [ -n "$IN_MAX_INPUT_BYTES" ]; then
           args+=(--max-input-bytes "$IN_MAX_INPUT_BYTES")
         fi
+        case "$IN_REQUIRE_BINDING" in
+          true) args+=(--require-request-binding) ;;
+          false) ;;
+          *) echo "::error::require-request-binding must be true or false"
+             echo "cli-exit=2" >> "$GITHUB_OUTPUT"; exit 0 ;;
+        esac
         python -m llm_release_gate gate "${args[@]}"
         code=$?
         echo "cli-exit=$code" >> "$GITHUB_OUTPUT"

@@ -26,12 +26,13 @@ from .gate import build_report
 from .hashing import file_sha256
 from .loading import (
     load_dataset, load_pricing, load_run_config, load_scorer_config,
-    load_thresholds, no_pricing, input_byte_limit,
+    load_thresholds, no_pricing, input_byte_limit, RunConfig,
 )
 from .manifest import build_manifest
 from .reports.html import render_html
 from .reports.markdown import render_markdown
 from .runner import run_config
+from .requests import BINDING_SCHEME
 from .scorers import build_scorers
 
 EXIT_PASS = 0
@@ -62,10 +63,19 @@ def _emit_github_summary(markdown: str) -> None:
         fh.write(markdown + "\n")
 
 
+def _require_binding(config: RunConfig, required: bool) -> None:
+    if required and (config.provider != "fake" or
+                     config.provider_options.get("request_binding") != BINDING_SCHEME):
+        raise GateConfigError("--require-request-binding requires fake provider "
+                              "request_binding='sha256-v1' on every run config")
+
+
 def _cmd_gate(args: argparse.Namespace) -> int:
     dataset = load_dataset(args.dataset)
     baseline_cfg = load_run_config(args.baseline, "baseline")
     candidate_cfg = load_run_config(args.candidate, "candidate")
+    _require_binding(baseline_cfg, args.require_request_binding)
+    _require_binding(candidate_cfg, args.require_request_binding)
     scorer_cfg = load_scorer_config(args.scorers)
     thresholds = load_thresholds(args.thresholds)
     pricing = load_pricing(args.pricing) if args.pricing else no_pricing()
@@ -98,8 +108,13 @@ def _cmd_gate(args: argparse.Namespace) -> int:
         },
         report_files=files,
     )
+    execution_options = {}
     if args.max_input_bytes is not None:
-        manifest["execution_options"] = {"max_input_bytes": args.max_input_bytes}
+        execution_options["max_input_bytes"] = args.max_input_bytes
+    if args.require_request_binding:
+        execution_options["require_request_binding"] = True
+    if execution_options:
+        manifest["execution_options"] = execution_options
     _write(files["manifest"], json.dumps(manifest, indent=2, ensure_ascii=False) + "\n")
 
     verdict = report["gate"]["verdict"]
@@ -135,6 +150,7 @@ def _cmd_run(args: argparse.Namespace) -> int:
     a side before wiring up a full gate."""
     dataset = load_dataset(args.dataset)
     cfg = load_run_config(args.config, "config")
+    _require_binding(cfg, args.require_request_binding)
     scorer_cfg = load_scorer_config(args.scorers)
     pricing = load_pricing(args.pricing) if args.pricing else no_pricing()
     scorers = build_scorers(scorer_cfg)
@@ -155,6 +171,27 @@ def _cmd_run(args: argparse.Namespace) -> int:
         print(f"{TOOL_NAME}: --fail-on-errors: {result.n_errors} item(s) failed; "
               f"diagnostics retained in {out_path}", file=sys.stderr)
         return EXIT_ERROR
+    return EXIT_PASS
+
+
+def _cmd_plan(args: argparse.Namespace) -> int:
+    from .planning import build_request_plan
+
+    dataset = load_dataset(args.dataset)
+    config = load_run_config(args.config, "config")
+    plan = build_request_plan(dataset, config)
+    content = json.dumps(plan, indent=2, ensure_ascii=False, allow_nan=False) + "\n"
+    out_path = os.path.join(args.out, "plan.json")
+    try:
+        os.makedirs(os.path.dirname(os.path.abspath(out_path)), exist_ok=True)
+        # A plan must never replace an input or silently overwrite another receipt.
+        with open(out_path, "x", encoding="utf-8", newline="\n") as fh:
+            fh.write(content)
+    except OSError as exc:
+        raise GateConfigError(f"plan output could not be created: {out_path} ({exc})") from exc
+    print(f"{TOOL_NAME}: planned {len(plan['requests'])} requests; no provider calls")
+    print(f"  plan hash: {plan['plan_hash']}")
+    print(f"  plan: {out_path}")
     return EXIT_PASS
 
 
@@ -196,6 +233,8 @@ def build_parser() -> argparse.ArgumentParser:
     gate.add_argument("--out", default="out", help="output directory (default: out)")
     gate.add_argument("--max-input-bytes", type=_positive_bytes,
                       help="maximum raw bytes per JSON input, including fixtures (default: unlimited)")
+    gate.add_argument("--require-request-binding", action="store_true",
+                      help="require sha256-v1 bound replay in both configs (default: not required)")
     gate.set_defaults(func=_cmd_gate)
 
     run = sub.add_parser("run", help="run one config over the dataset (fixture debugging)")
@@ -208,7 +247,17 @@ def build_parser() -> argparse.ArgumentParser:
                      help="maximum raw bytes per JSON input, including fixtures (default: unlimited)")
     run.add_argument("--fail-on-errors", action="store_true",
                      help="exit 2 if any item fails, after writing run.json (default: diagnostic exit 0)")
+    run.add_argument("--require-request-binding", action="store_true",
+                     help="require sha256-v1 bound replay in the run config")
     run.set_defaults(func=_cmd_run)
+
+    plan = sub.add_parser("plan", help="fingerprint rendered requests without calling a provider")
+    plan.add_argument("--dataset", required=True, help="golden dataset JSON")
+    plan.add_argument("--config", required=True, help="run-config JSON to render")
+    plan.add_argument("--out", default="out", help="directory for a new plan.json (never overwritten)")
+    plan.add_argument("--max-input-bytes", type=_positive_bytes,
+                      help="maximum raw bytes per JSON input (default: unlimited)")
+    plan.set_defaults(func=_cmd_plan)
 
     hash_cmd = sub.add_parser("hash", help="print sha256 content hashes for files")
     hash_cmd.add_argument("files", nargs="+")

@@ -20,7 +20,8 @@ this fix, and historical release measurements are not rewritten.
 `tests/test_stable_aggregation.py` exercises both the native interpreter and an
 emulation of pre-3.12 built-in summation, pins public fixture cost values, and
 checks overflow/unavailable behavior. The CI `report-reproducibility` job compares
-all three demos' JSON, Markdown, and HTML report bytes from the actual Python
+all four demos' JSON, Markdown, and HTML report bytes plus the request plan
+and synthetic binding-check receipt from the actual Python
 3.11 and 3.13 jobs. Manifests are intentionally excluded because they contain
 paths and timestamps. Missing artifacts fail the comparison.
 

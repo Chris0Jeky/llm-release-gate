@@ -5,6 +5,20 @@ repository policy; live evidence always wins.
 
 ## Current checkpoint
 
+- **Additive product progress:** #82 is merged as
+  `827c050e987b6b90009d6efc51528c61c21a25d7`, adding opt-in byte limits and
+  failure-sensitive diagnostic runs; #30 is resolved by that explicit compatible
+  policy, not by silently changing defaults. Its PR-head CI run `37554304564`
+  passed all jobs, including actual Action refusal, on `ec5603f006c8caa824fb34b99535da2730a05c7a`.
+- **Request evidence:** current source adds offline `plan`, opt-in rendered-request
+  fingerprints and independent CLI/Action binding requirements. The synthetic
+  `make demo-bound` proves accepted replay and stale-evidence refusal. Read
+  [request-binding semantics and limits](docs/request-binding.md); matching content
+  is not producer authenticity or model-execution proof. Verify the current PR/head
+  receipt rather than transferring #82's CI evidence to this later source.
+- **Release boundary:** these additions are unreleased main. No version tag,
+  provider credentials or publication settings were changed.
+
 - **Authority:** T2 `daily-driver` in `.agent-harness/tier.json`; push and merge are free only
   after the repository gate is met.
 - **Identity:** the public repository was renamed to
@@ -120,13 +134,14 @@ this local checkout controls it. This repo's local tier declaration is the autho
 ## Resume
 
 **Exact resume point:** reconcile live main, open PRs, reviews and exact-head CI first.
-PRs #78-#80 are merged. If the artifact-downloader runtime/integrity follow-up is
-still open, qualify its own current head before merging; otherwise use its posted
-receipt rather than reopening completed work. Do not redo the three repaired issues.
+PRs #78-#82 are merged. Reconcile the request-binding PR and any later review
+findings against its current head before selecting more work. Do not redo completed
+permission/unbundler/numerical/downloader/input-control repairs.
 
-Remaining bounded work is recorded in #30 (input-size and diagnostic-run/error-policy
-compatibility decisions), #35 (the explicitly deferred real-provider latency boundary),
-and #24 (a qualified, approved pinned consumer fixture pair before a report-only adapter).
+#30 is now resolved through the opt-in API in #82. Remaining entry-gated work is
+#35 (the explicitly deferred real-provider latency boundary) and #24 (a qualified,
+approved pinned consumer fixture pair before a report-only adapter). Request-bound
+fake replay is not that HQ importer and does not claim its entry conditions are met.
 Use their latest reconciliation comments and [the maintenance receipt](docs/maintenance-78-80.md).
 Do not infer an implementation mandate from historical acceleration proposals.
 

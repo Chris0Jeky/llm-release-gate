@@ -1,0 +1,16 @@
+{
+  "name": "synthetic-bound-candidate",
+  "provider": "fake",
+  "model": "synthetic-bound-v1",
+  "params": {
+    "temperature": 0
+  },
+  "prompt": {
+    "system": "Answer only from the supplied documents.",
+    "template": "Use these documents and cite supporting sources.\n$documents\n\n$question"
+  },
+  "provider_options": {
+    "fixtures": "fixtures/candidate.json",
+    "request_binding": "sha256-v1"
+  }
+}
