@@ -33,6 +33,7 @@ from .loading import (
 )
 from .runner import RunResult
 from .requests import BINDING_SCHEME
+from .policy_validation import require_number, validate_rule
 
 EPS = 1e-9
 
@@ -50,7 +51,10 @@ def _escalate(current: str, new: str) -> str:
 def _fmt(value: float | None) -> str:
     if value is None:
         return "n/a"
-    return f"{value:.6g}"
+    try:
+        return f"{value:.6g}"
+    except OverflowError:
+        return str(value)  # Preserve exact integers outside floating-point range.
 
 
 def _check_constraint(
@@ -104,6 +108,8 @@ def _require_aggregate(metric: dict, rule_metric: str, side: str) -> dict:
             f"aggregate for metric '{rule_metric}' on {side} side is malformed: "
             f"missing 'available' key"
         )
+    if type(metric["available"]) is not bool:
+        raise GateConfigError(f"aggregate for '{rule_metric}' on {side}: available must be boolean")
     return metric
 
 
@@ -119,7 +125,7 @@ def _aggregate_value(metric: dict, rule_metric: str, side: str):
             f"aggregate for metric '{rule_metric}' on {side} side is malformed: "
             f"marked available but 'value' is None"
         )
-    return value
+    return require_number(value, f"aggregate for '{rule_metric}' on {side}")
 
 
 def _evaluate_rule(rule: ThresholdRule, baseline_m: dict, candidate_m: dict, implicit: bool) -> dict:
@@ -151,11 +157,16 @@ def _evaluate_rule(rule: ThresholdRule, baseline_m: dict, candidate_m: dict, imp
                 verdict = _escalate(verdict, "warn")
             continue
         any_evaluated = True
-        breached, observed, message = _check_constraint(
-            name, threshold,
-            _aggregate_value(baseline_m, rule.metric, "baseline") if needs_baseline else None,
-            _aggregate_value(candidate_m, rule.metric, "candidate"),
-        )
+        try:
+            breached, observed, message = _check_constraint(
+                name, threshold,
+                _aggregate_value(baseline_m, rule.metric, "baseline") if needs_baseline else None,
+                _aggregate_value(candidate_m, rule.metric, "candidate"),
+            )
+            if observed is not None:
+                require_number(observed, f"threshold arithmetic for '{rule.metric}'")
+        except ArithmeticError as exc:
+            raise GateConfigError(f"threshold arithmetic for '{rule.metric}' cannot be represented") from exc
         checks.append({
             "constraint": name,
             "threshold": threshold,
@@ -193,6 +204,8 @@ def evaluate_thresholds(
 ) -> list[dict]:
     known = set(baseline_aggs) | set(candidate_aggs)
     rules = list(thresholds.rules)
+    for rule in rules:
+        validate_rule(rule)
     implicit_flags = [False] * len(rules)
     if not any(r.metric == "errors.error_rate" for r in rules):
         rules.append(ThresholdRule(metric="errors.error_rate", constraints={"max_value": 0.0}))

@@ -213,6 +213,32 @@ def _cmd_verify(args: argparse.Namespace) -> int:
     return EXIT_GATE_FAIL if args.require_pass and proof['gate_verdict'] != 'pass' else EXIT_PASS
 
 
+def _cmd_audit(args: argparse.Namespace) -> int:
+    from .audit import audit_bundle
+
+    receipt = audit_bundle(args.bundle, args.thresholds,
+        expected_result_hash=args.expected_result_hash,
+        expected_bundle_hash=args.expected_bundle_hash,
+        expected_policy_hash=args.expected_policy_hash,
+        max_input_bytes=args.max_input_bytes)
+    if args.json_output:
+        print(json.dumps(receipt, indent=2, ensure_ascii=False, allow_nan=False))
+    else:
+        print(f"{TOOL_NAME}: consumer policy {receipt['policy_verdict'].upper()}")
+        print(f"  recorded gate verdict: {receipt['recorded_gate_verdict'].upper()}")
+        print(f"  rules: {receipt['n_rules']}, failed: {receipt['n_failed']}, warned: {receipt['n_warned']}")
+        for rule in receipt['rules']:
+            if rule['verdict'] in ('fail', 'warn'):
+                print(f"  [{rule['verdict'].upper()}] {json.dumps(rule['metric'], ensure_ascii=False)}: "
+                      f"{json.dumps(rule['message'], ensure_ascii=False)}")
+        print(f"  result hash: {receipt['result_hash']}")
+        print(f"  bundle hash: {receipt['bundle_hash']}")
+        print(f"  policy hash: {receipt['policy_hash']}")
+        print(f"  audit hash: {receipt['audit_hash']}")
+        print("  Stored aggregates only; source truth, scoring and authenticity were not verified.")
+    return EXIT_PASS if receipt['policy_verdict'] == 'pass' else EXIT_GATE_FAIL
+
+
 def _cmd_hash(args: argparse.Namespace) -> int:
     for path in args.files:
         if not os.path.isfile(path):
@@ -278,6 +304,17 @@ def build_parser() -> argparse.ArgumentParser:
     verify.add_argument("--max-input-bytes", type=_positive_bytes, default=DEFAULT_MAX_BYTES,
                         help="maximum raw bytes per artifact (default: 16777216)")
     verify.set_defaults(func=_cmd_verify)
+
+    audit = sub.add_parser("audit", help="apply a supplied policy to verified stored aggregates")
+    audit.add_argument("--bundle", required=True, help="directory containing the four report artifacts")
+    audit.add_argument("--thresholds", required=True, help="explicit consumer threshold-policy JSON")
+    audit.add_argument("--expected-result-hash", help="trusted external report content hash")
+    audit.add_argument("--expected-bundle-hash", help="trusted external invocation bundle hash")
+    audit.add_argument("--expected-policy-hash", help="trusted SHA-256 of exact policy file bytes")
+    audit.add_argument("--json", dest="json_output", action="store_true", help="print the audit receipt as JSON")
+    audit.add_argument("--max-input-bytes", type=_positive_bytes, default=DEFAULT_MAX_BYTES,
+                       help="maximum raw bytes per policy or artifact (default: 16777216)")
+    audit.set_defaults(func=_cmd_audit)
 
     plan = sub.add_parser("plan", help="fingerprint rendered requests without calling a provider")
     plan.add_argument("--dataset", required=True, help="golden dataset JSON")
