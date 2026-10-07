@@ -10,12 +10,16 @@ repository policy; live evidence always wins.
   failure-sensitive diagnostic runs; #30 is resolved by that explicit compatible
   policy, not by silently changing defaults. Its PR-head CI run `37554304564`
   passed all jobs, including actual Action refusal, on `ec5603f006c8caa824fb34b99535da2730a05c7a`.
-- **Request evidence:** current source adds offline `plan`, opt-in rendered-request
+- **Request evidence:** #83 is merged as
+  `7a343351d55427d010f288016d12fff2a72d79fc`, adding offline `plan`, opt-in rendered-request
   fingerprints and independent CLI/Action binding requirements. The synthetic
   `make demo-bound` proves accepted replay and stale-evidence refusal. Read
   [request-binding semantics and limits](docs/request-binding.md); matching content
-  is not producer authenticity or model-execution proof. Verify the current PR/head
-  receipt rather than transferring #82's CI evidence to this later source.
+  is not producer authenticity or model-execution proof. PR-head CI run
+  `37556565750` qualified `17b5fb481f1bce3e7276678a244f1c8937f138fa` in all five jobs.
+  The installed-feature smoke follow-up adds fresh-wheel checks for the new
+  commands; see [progress and qualification receipts](docs/request-evidence-progress.md).
+  Its own current-head CI is required, not a transfer of prior receipts.
 - **Release boundary:** these additions are unreleased main. No version tag,
   provider credentials or publication settings were changed.
 
@@ -134,8 +138,8 @@ this local checkout controls it. This repo's local tier declaration is the autho
 ## Resume
 
 **Exact resume point:** reconcile live main, open PRs, reviews and exact-head CI first.
-PRs #78-#82 are merged. Reconcile the request-binding PR and any later review
-findings against its current head before selecting more work. Do not redo completed
+PRs #78-#83 are merged. Reconcile the installed-feature smoke follow-up and any
+later review findings against its current head before selecting more work. Do not redo completed
 permission/unbundler/numerical/downloader/input-control repairs.
 
 #30 is now resolved through the opt-in API in #82. Remaining entry-gated work is
