@@ -95,6 +95,34 @@ jobs:
           max-input-bytes: "1"
           comment: "false"
 
+      - name: Gate synthetic request-bound replay (must pass)
+        id: bound
+        uses: ./
+        with:
+          dataset: examples/request-bound-replay/dataset.json
+          baseline: examples/request-bound-replay/baseline.json
+          candidate: examples/request-bound-replay/candidate.json
+          scorers: examples/request-bound-replay/scorers.json
+          thresholds: examples/request-bound-replay/thresholds.json
+          out: out/action-bound
+          require-request-binding: "true"
+          max-input-bytes: "1048576"
+          comment: "false"
+
+      - name: Refuse unbound configs under binding policy
+        id: unbound
+        continue-on-error: true
+        uses: ./
+        with:
+          dataset: examples/rag-support-bot/dataset.json
+          baseline: examples/rag-support-bot/baseline.json
+          candidate: examples/rag-support-bot/candidate.json
+          scorers: examples/rag-support-bot/scorers.json
+          thresholds: examples/rag-support-bot/thresholds.json
+          out: out/action-unbound
+          require-request-binding: "true"
+          comment: "false"
+
       - name: Assert outcomes
         run: |
           test "${{ steps.green.outputs.verdict }}" = "pass"
@@ -104,7 +132,12 @@ jobs:
           test -z "${{ steps.oversize.outputs.verdict }}"
           test -z "${{ steps.oversize.outputs.report-json }}"
           test ! -e out/action-oversize/report.json
-          echo "action self-test OK: bounded green passed, red blocked, oversized input refused"
+          test "${{ steps.bound.outputs.verdict }}" = "pass"
+          test "${{ steps.unbound.outcome }}" = "failure"
+          test -z "${{ steps.unbound.outputs.verdict }}"
+          test -z "${{ steps.unbound.outputs.report-json }}"
+          test ! -e out/action-unbound/report.json
+          echo "action self-test OK: green/bound passed; red, oversized and unbound inputs blocked"
 
   report-reproducibility:
     needs: test
@@ -126,9 +159,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for example in rag-support-bot extraction-api assistant-cheap-regression; do
+          for example in rag-support-bot extraction-api assistant-cheap-regression request-bound-replay; do
             for format in json md html; do
               cmp "reports-3.11/$example/report.$format" "reports-3.13/$example/report.$format"
             done
           done
-          echo "All nine report artifacts are byte-identical across Python 3.11 and 3.13"
+          cmp "reports-3.11/request-bound-replay/plan.json" "reports-3.13/request-bound-replay/plan.json"
+          cmp "reports-3.11/request-bound-replay/binding-check.json" "reports-3.13/request-bound-replay/binding-check.json"
+          echo "All twelve reports, request plan and binding receipt are byte-identical across Python 3.11 and 3.13"

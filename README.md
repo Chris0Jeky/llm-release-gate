@@ -158,8 +158,22 @@ item fails. Plain `run` still exits 0 after writing diagnostics; use `gate` for
 release policy. Neither option changes default thresholds or report hashes.
 See [automation controls](docs/automation-controls.md) for limits and examples.
 
+## Request-bound replay (unreleased main)
+
+Legacy replay matches model and item ID, not a changed prompt. New opt-in
+`provider_options.request_binding: "sha256-v1"` verifies each fixture's hash
+against the rendered request. `gate --require-request-binding` independently
+requires it on both sides, preventing a silent config downgrade.
+
+`plan --dataset dataset.json --config candidate.json --out out/new-plan` exports
+request identities without provider calls or raw prompts. `make demo-bound`
+proves valid synthetic replay passes and stale evidence is refused with exit 2.
+Binding is content consistency, **not proof of model execution or authenticity**.
+See [the request-binding contract](docs/request-binding.md) before collecting evidence.
+
 ## Examples
 
+- `examples/request-bound-replay/` — explicitly synthetic bound replay, plus stale-request refusal
 - `examples/rag-support-bot/` — RAG application; prompt improvement, **passes**
 - `examples/extraction-api/` — structured extraction; safe cheaper model swap, **passes**
 - `examples/assistant-cheap-regression/` — source-grounded staff assistant; cheap model

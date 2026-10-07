@@ -1,0 +1,16 @@
+{
+  "name": "synthetic-bound-baseline",
+  "provider": "fake",
+  "model": "synthetic-bound-v1",
+  "params": {
+    "temperature": 0
+  },
+  "prompt": {
+    "system": "Answer only from the supplied documents.",
+    "template": "$documents\n\n$question"
+  },
+  "provider_options": {
+    "fixtures": "fixtures/baseline.json",
+    "request_binding": "sha256-v1"
+  }
+}

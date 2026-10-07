@@ -1,0 +1,45 @@
+{
+  "name": "synthetic-request-binding",
+  "version": "1",
+  "task": "rag",
+  "items": [
+    {
+      "id": "return-window",
+      "input": {
+        "question": "How long is the return window?",
+        "documents": [
+          {
+            "id": "policy",
+            "text": "The synthetic store accepts returns within 14 days."
+          }
+        ]
+      },
+      "expected": {
+        "should_abstain": false,
+        "quality": {
+          "must_contain": [
+            "14 days"
+          ]
+        },
+        "must_cite": [
+          "policy"
+        ]
+      }
+    },
+    {
+      "id": "phone-support",
+      "input": {
+        "question": "Is phone support available on Sundays?",
+        "documents": [
+          {
+            "id": "policy",
+            "text": "The synthetic store accepts returns within 14 days."
+          }
+        ]
+      },
+      "expected": {
+        "should_abstain": true
+      }
+    }
+  ]
+}

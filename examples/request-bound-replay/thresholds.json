@@ -1,0 +1,16 @@
+{
+  "rules": [
+    {
+      "metric": "quality.pass_rate",
+      "min_value": 1
+    },
+    {
+      "metric": "abstention.false_answer_rate",
+      "max_value": 0
+    },
+    {
+      "metric": "citations.valid_rate",
+      "min_value": 1
+    }
+  ]
+}

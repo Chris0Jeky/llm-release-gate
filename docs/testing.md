@@ -7,7 +7,8 @@ make install      # pip install -e ".[dev]"
 make test         # pytest (see the pinned measurement below)
 make demo-green   # both green examples; target fails unless both exit 0
 make demo-red     # red example; target fails unless the gate exits exactly 1
-make ci           # test + demo-green + demo-red (what CI runs)
+make demo-bound   # synthetic bound replay + stale-evidence refusal
+make ci           # test + demo-green + demo-red + demo-bound (what CI runs)
 ```
 
 Windows note: run under Git Bash (GNU make + sh), or call the underlying
@@ -121,8 +122,9 @@ Its report hashes are `34742875a2979772b7a3db015182e3a9e9753261273953dc286f6ab81
 historical 0.1.2 measurements above. Exact release receipts live in the ledger.
 Python 3.11 cost summation produces different rag/red hashes from Python 3.13+
 for these inputs; observed verdicts agree. Pin the Python version when comparing
-result hashes until [#69](https://github.com/Chris0Jeky/llm-release-gate/issues/69)
-is resolved; this is separate from input line-ending normalization.
+historical released result hashes. Main fixes [#69](https://github.com/Chris0Jeky/llm-release-gate/issues/69)
+and compares report bytes across the hosted matrix; see [numerical reproducibility](numerical-reproducibility.md).
+No historical release tag was rewritten. This is separate from input line-ending normalization.
 
 The verifier compares `LICENSE`, `RELICENSING.md` and `LICENSES/MIT.txt` bytes
 against the checkout in both archives, checks package metadata and zero runtime
@@ -138,3 +140,17 @@ exercises loading + wiring) with `mini_gate` overrides; drop to unit level for p
 (verdicts, hashing, schema validation). If you add a metric or scorer, test its
 *ownership* (no metric collisions), its applicability rules, and how it renders when
 unavailable.
+
+## Additive automation and bound-replay checks (unreleased main)
+
+`tests/test_automation_controls.py` covers scoped raw-byte limits and the opt-in
+diagnostic failure policy. `tests/test_request_binding.py` covers versioned request
+identity, stale/missing evidence, independent binding requirements, plan safety,
+legacy compatibility and assurance disclosures. `tests/test_bound_example.py`
+executes the synthetic demo and tests quoted Action flag transport in Bash.
+
+`make demo-bound` is repeatable and refuses stale evidence with exit 2. `make ci`
+now also runs this demo. The hosted matrix compares twelve report files plus a
+request plan and synthetic check receipt; the Action self-test adds bounded-input
+and required-binding acceptance/refusal. Earlier dated counts above remain
+historical measurements, not a count for current main.

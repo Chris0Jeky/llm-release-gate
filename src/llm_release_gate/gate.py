@@ -32,6 +32,7 @@ from .loading import (
     Dataset, PricingTable, RunConfig, ScorerConfig, ThresholdRule, Thresholds,
 )
 from .runner import RunResult
+from .requests import BINDING_SCHEME
 
 EPS = 1e-9
 
@@ -285,6 +286,13 @@ def build_report(
     n_failed = sum(1 for r in rule_verdicts if r["verdict"] == "fail")
     n_warned = sum(1 for r in rule_verdicts if r["verdict"] == "warn")
     notices = []
+    bound_roles = [role for role, run in (("baseline", baseline_run), ("candidate", candidate_run))
+                   if run.provider_info.get("name") == "fake"
+                   and run.provider_info.get("request_binding") == BINDING_SCHEME]
+    if bound_roles:
+        notices.append("Request-bound replay checks fixture request identities for "
+                       + ", ".join(bound_roles)
+                       + "; hashes do not attest model execution or producer authenticity")
     if baseline_run.n_errors:
         notices.append(
             f"baseline run had {baseline_run.n_errors}/{baseline_run.n_items} provider "
