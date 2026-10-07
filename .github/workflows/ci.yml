@@ -123,6 +123,16 @@ jobs:
           require-request-binding: "true"
           comment: "false"
 
+      - name: Verify the Action's pinned evidence bundle
+        env:
+          EXPECTED_BUNDLE_HASH: ${{ steps.bound.outputs.bundle-hash }}
+          EXPECTED_RESULT_HASH: ${{ steps.bound.outputs.result-hash }}
+        run: |
+          test -n "$EXPECTED_BUNDLE_HASH"
+          python -m llm_release_gate verify --bundle out/action-bound \
+            --expected-bundle-hash "$EXPECTED_BUNDLE_HASH" \
+            --expected-result-hash "$EXPECTED_RESULT_HASH" --require-pass --json
+
       - name: Assert outcomes
         run: |
           test "${{ steps.green.outputs.verdict }}" = "pass"

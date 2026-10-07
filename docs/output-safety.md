@@ -46,3 +46,8 @@ Input rejection does not delete artifacts from a prior run. Rendering failures
 leave prior artifacts untouched; staging failures publish nothing; simulated
 replacement failures and incomplete rollback have explicit regression coverage
 in `tests/test_output_safety.py`.
+
+New gate manifests include a [bundle integrity receipt](bundle-verification.md).
+A copied, unlocked bundle can be checked with `verify --bundle DIRECTORY`; supply
+an expected bundle hash from a trusted channel to detect a complete rewrite.
+Verification never removes a publication lock or performs recovery automatically.

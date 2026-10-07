@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Add offline bundle integrity receipts, trusted-pin verification and an Action
+  bundle-hash output, without reclassifying integrity as a passing gate.
+
 - Protect loaded inputs and existing report bundles with staged publication,
   output-alias checks, cooperative locking and recoverable rollback.
 

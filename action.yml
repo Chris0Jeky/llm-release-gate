@@ -59,6 +59,9 @@ outputs:
   result-hash:
     description: "Content hash identifying this comparison result"
     value: ${{ steps.gate.outputs.result-hash }}
+  bundle-hash:
+    description: "Integrity hash for this report bundle and invocation manifest"
+    value: ${{ steps.gate.outputs.bundle-hash }}
   report-json:
     description: "Path to report.json"
     value: ${{ steps.gate.outputs.report-json }}

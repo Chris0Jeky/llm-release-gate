@@ -22,6 +22,7 @@ import traceback
 
 from . import TOOL_NAME, __version__
 from .errors import GateConfigError
+from .bundles import build_bundle_receipt, DEFAULT_MAX_BYTES
 from .gate import build_report
 from .hashing import file_sha256
 from .loading import (
@@ -116,6 +117,9 @@ def _cmd_gate(args: argparse.Namespace) -> int:
         execution_options["require_request_binding"] = True
     if execution_options:
         manifest["execution_options"] = execution_options
+    manifest["bundle_integrity"] = build_bundle_receipt(manifest, {
+        os.path.basename(path): content.encode("utf-8") for path, content in documents.items()
+    })
     documents[files["manifest"]] = json.dumps(manifest, indent=2, ensure_ascii=False) + "\n"
     publish_documents(documents)
 
@@ -133,6 +137,7 @@ def _cmd_gate(args: argparse.Namespace) -> int:
     for notice in report["gate"]["notices"]:
         print(f"  note: {notice}")
     print(f"  result hash: {report['result_hash']}")
+    print(f"  bundle hash: {manifest['bundle_integrity']['bundle_hash']}")
     print(f"  reports: {files['report_json']}, {files['report_md']}, {files['report_html']}")
 
     _emit_github_summary(markdown)
@@ -140,6 +145,7 @@ def _cmd_gate(args: argparse.Namespace) -> int:
         "verdict": verdict,
         "exit-code": str(exit_code),
         "result-hash": report["result_hash"],
+        "bundle-hash": manifest["bundle_integrity"]["bundle_hash"],
         "report-json": files["report_json"],
         "report-md": files["report_md"],
         "report-html": files["report_html"],
@@ -197,6 +203,23 @@ def _cmd_plan(args: argparse.Namespace) -> int:
     return EXIT_PASS
 
 
+def _cmd_verify(args: argparse.Namespace) -> int:
+    from .bundles import verify_bundle
+
+    proof = verify_bundle(args.bundle, expected_result_hash=args.expected_result_hash,
+                          expected_bundle_hash=args.expected_bundle_hash,
+                          max_input_bytes=args.max_input_bytes)
+    if args.json_output:
+        print(json.dumps(proof, indent=2, ensure_ascii=False, allow_nan=False))
+    else:
+        print(f"{TOOL_NAME}: bundle integrity VERIFIED")
+        print(f"  recorded gate verdict: {proof['gate_verdict'].upper()} (not re-evaluated)")
+        print(f"  result hash: {proof['result_hash']}")
+        print(f"  bundle hash: {proof['bundle_hash']}")
+        print("  Content consistency is not proof of model execution or producer authenticity.")
+    return EXIT_GATE_FAIL if args.require_pass and proof['gate_verdict'] != 'pass' else EXIT_PASS
+
+
 def _cmd_hash(args: argparse.Namespace) -> int:
     for path in args.files:
         if not os.path.isfile(path):
@@ -252,6 +275,16 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--require-request-binding", action="store_true",
                      help="require sha256-v1 bound replay in the run config")
     run.set_defaults(func=_cmd_run)
+
+    verify = sub.add_parser("verify", help="verify a report bundle offline, without re-running a gate")
+    verify.add_argument("--bundle", required=True, help="directory containing the four report artifacts")
+    verify.add_argument("--expected-result-hash", help="trusted external report content hash")
+    verify.add_argument("--expected-bundle-hash", help="trusted external hash including manifest and artifact bytes")
+    verify.add_argument("--require-pass", action="store_true", help="exit 1 for intact evidence recording a failed gate")
+    verify.add_argument("--json", dest="json_output", action="store_true", help="print a machine-readable verification receipt")
+    verify.add_argument("--max-input-bytes", type=_positive_bytes, default=DEFAULT_MAX_BYTES,
+                        help="maximum raw bytes per artifact (default: 16777216)")
+    verify.set_defaults(func=_cmd_verify)
 
     plan = sub.add_parser("plan", help="fingerprint rendered requests without calling a provider")
     plan.add_argument("--dataset", required=True, help="golden dataset JSON")

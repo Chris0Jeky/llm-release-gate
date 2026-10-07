@@ -22,7 +22,7 @@ def source_cli_runner(calls, mutation=None):
             code = main(list(args[2:]))
         result = subprocess.CompletedProcess(args, code, out.getvalue(), err.getvalue())
         assert code == expected, (args, code, result.stdout, result.stderr)
-        target = Path(args[args.index("--out") + 1])
+        target = Path(args[args.index("--bundle" if args[2] == "verify" else "--out") + 1])
         if mutation:
             mutation(args, target, result)
         return result
@@ -33,7 +33,7 @@ def test_smoke_exercises_plan_binding_caps_and_diagnostic_policy(tmp_path):
     assert hasattr(verify_dist, "smoke_replay_features")
     calls = []
     verify_dist.smoke_replay_features(source_cli_runner(calls), tmp_path)
-    assert {args[2] for args, _ in calls} == {"plan", "gate", "run"}
+    assert {args[2] for args, _ in calls} == {"plan", "gate", "run", "verify"}
     assert any(args[2] == "plan" and code == 2 for args, code in calls)
     assert sum(args[2] == "gate" and code == 2 for args, code in calls) == 3
     assert any(args[2] == "run" and "--fail-on-errors" in args and code == 2
@@ -43,7 +43,7 @@ def test_smoke_exercises_plan_binding_caps_and_diagnostic_policy(tmp_path):
 
 
 @pytest.mark.parametrize("failure", ["plan-overwrite", "plan-identity", "bound-identity",
-                                    "generic-refusal", "diagnostic-loss"])
+                                    "generic-refusal", "diagnostic-loss", "invalid-verification"])
 def test_smoke_refuses_false_positive_evidence(tmp_path, failure):
     assert hasattr(verify_dist, "smoke_replay_features")
     def mutate(args, target, result):
@@ -61,6 +61,8 @@ def test_smoke_refuses_false_positive_evidence(tmp_path, failure):
             path.write_text(json.dumps(report))
         if failure == "generic-refusal" and args[2] == "gate" and result.returncode == 2:
             result.stderr = "configuration error: some unrelated failure"
+        if failure == "invalid-verification" and args[2] == "verify" and result.returncode == 0:
+            result.stdout = '{"integrity":"unverified"}'
         if failure == "diagnostic-loss" and args[2] == "run":
             (target / "run.json").unlink()
     with pytest.raises((AssertionError, FileNotFoundError, KeyError)):
