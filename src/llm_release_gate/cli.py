@@ -26,9 +26,10 @@ from .gate import build_report
 from .hashing import file_sha256
 from .loading import (
     load_dataset, load_pricing, load_run_config, load_scorer_config,
-    load_thresholds, no_pricing, input_byte_limit, RunConfig,
+    load_thresholds, no_pricing, input_byte_limit, RunConfig, capture_input_sources,
 )
 from .manifest import build_manifest
+from .outputs import publish_documents
 from .reports.html import render_html
 from .reports.markdown import render_markdown
 from .runner import run_config
@@ -41,9 +42,7 @@ EXIT_ERROR = 2
 
 
 def _write(path: str, content: str) -> None:
-    os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
-    with open(path, "w", encoding="utf-8", newline="\n") as fh:
-        fh.write(content)
+    publish_documents({path: content})
 
 
 def _emit_github_outputs(pairs: dict) -> None:
@@ -97,9 +96,11 @@ def _cmd_gate(args: argparse.Namespace) -> int:
         "report_html": os.path.join(out_dir, "report.html"),
         "manifest": os.path.join(out_dir, "manifest.json"),
     }
-    _write(files["report_json"], json.dumps(report, indent=2, ensure_ascii=False) + "\n")
-    _write(files["report_md"], markdown)
-    _write(files["report_html"], render_html(report))
+    documents = {
+        files["report_json"]: json.dumps(report, indent=2, ensure_ascii=False) + "\n",
+        files["report_md"]: markdown,
+        files["report_html"]: render_html(report),
+    }
     manifest = build_manifest(
         report, dataset, baseline_cfg, candidate_cfg, scorer_cfg, thresholds, pricing,
         provider_infos={
@@ -115,7 +116,8 @@ def _cmd_gate(args: argparse.Namespace) -> int:
         execution_options["require_request_binding"] = True
     if execution_options:
         manifest["execution_options"] = execution_options
-    _write(files["manifest"], json.dumps(manifest, indent=2, ensure_ascii=False) + "\n")
+    documents[files["manifest"]] = json.dumps(manifest, indent=2, ensure_ascii=False) + "\n"
+    publish_documents(documents)
 
     verdict = report["gate"]["verdict"]
     exit_code = EXIT_PASS if verdict == "pass" else EXIT_GATE_FAIL
@@ -270,7 +272,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
     try:
-        with input_byte_limit(getattr(args, "max_input_bytes", None)):
+        with capture_input_sources(), input_byte_limit(getattr(args, "max_input_bytes", None)):
             return args.func(args)
     except GateConfigError as exc:
         print(f"{TOOL_NAME}: configuration error: {exc}", file=sys.stderr)
