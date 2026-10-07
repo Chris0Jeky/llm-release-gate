@@ -123,6 +123,28 @@ jobs:
           require-request-binding: "true"
           comment: "false"
 
+      - name: Emit adversarial strings as literal outputs
+        id: literal_outputs
+        run: |
+          python - <<'PYCODE'
+          from llm_release_gate.github_io import emit_outputs
+          emit_outputs({'verdict': 'fail', 'literal': 'line1\ninjected=value\nverdict=pass\nlrg_output_0\n'})
+          PYCODE
+
+      - name: Assert runner parsed one literal value without forged outputs
+        env:
+          LITERAL_PAYLOAD: ${{ steps.literal_outputs.outputs.literal }}
+          LITERAL_VERDICT: ${{ steps.literal_outputs.outputs.verdict }}
+          INJECTED_OUTPUT: ${{ steps.literal_outputs.outputs.injected }}
+        run: |
+          python - <<'PYCODE'
+          import os
+          assert os.environ['LITERAL_PAYLOAD'] == 'line1\ninjected=value\nverdict=pass\nlrg_output_0\n'
+          assert os.environ['LITERAL_VERDICT'] == 'fail'
+          assert os.environ['INJECTED_OUTPUT'] == ''
+          print('Literal multiline output transport: PASS')
+          PYCODE
+
       - name: Verify the Action's pinned evidence bundle
         env:
           EXPECTED_BUNDLE_HASH: ${{ steps.bound.outputs.bundle-hash }}

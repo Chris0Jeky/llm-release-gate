@@ -5,63 +5,38 @@ repository policy; live evidence always wins.
 
 ## Current checkpoint
 
-- **Additive product progress:** #82 is merged as
-  `827c050e987b6b90009d6efc51528c61c21a25d7`, adding opt-in byte limits and
-  failure-sensitive diagnostic runs; #30 is resolved by that explicit compatible
-  policy, not by silently changing defaults. Its PR-head CI run `37554304564`
-  passed all jobs, including actual Action refusal, on `ec5603f006c8caa824fb34b99535da2730a05c7a`.
-- **Request evidence:** #83 is merged as
-  `7a343351d55427d010f288016d12fff2a72d79fc`, adding offline `plan`, opt-in rendered-request
-  fingerprints and independent CLI/Action binding requirements. The synthetic
-  `make demo-bound` proves accepted replay and stale-evidence refusal. Read
-  [request-binding semantics and limits](docs/request-binding.md); matching content
-  is not producer authenticity or model-execution proof. PR-head CI run
-  `37556565750` qualified `17b5fb481f1bce3e7276678a244f1c8937f138fa` in all five jobs.
-  The installed-feature smoke follow-up adds fresh-wheel checks for the new
-  commands; see [progress and qualification receipts](docs/request-evidence-progress.md).
-  Its own current-head CI is required, not a transfer of prior receipts.
-- **Release boundary:** these additions are unreleased main. No version tag,
-  provider credentials or publication settings were changed.
-
-- **Authority:** T2 `daily-driver` in `.agent-harness/tier.json`; push and merge are free only
-  after the repository gate is met.
-- **Identity:** the public repository was renamed to
-  [`Chris0Jeky/llm-release-gate`](https://github.com/Chris0Jeky/llm-release-gate) on 2026-08-02.
-- **Release state:** GPL [v0.2.0](https://github.com/Chris0Jeky/llm-release-gate/releases/tag/v0.2.0)
-  was published 2026-10-02 at 23:14:53 UTC. Both annotated `v0.2.0` and floating
-  `v0` peel to `d3e80877f0bdd309a049aba5dfdfd49ea032a1d9`. Historical MIT
-  `v0.1.0` (`0e0f480`), `v0.1.1` (`5514019`) and `v0.1.2` (`5c36235`) retain
-  their exact tag objects and targets. See [verified receipt](docs/releases/v0.2.0.md).
-- **Marketplace:** the public listing's Latest display resolves to v0.2.0 with the
-  existing **Continuous integration** and **Code quality** categories. Its release
-  chooser still contains only v0.1.2; registering v0.2.0 through the existing
-  release editor remains unexecuted because no Computer Use runtime was callable.
-- **Decisions:** q-1 and q-3 are complete; q-2 is deliberately deferred; q-4 waits for two
-  real users. q-5/q-6 are approved: publish the strict GPL release and move `v0`
-  to it. This exact transition is published and verified; approval was received
-  2026-10-02 at 22:45:50 UTC. The Marketplace UI task requires no new product decision.
-- **Release evidence:** #68 fixed reproduced wheel notice omission #67 and aligned
-  version sources at 0.2.0. Exact merged-head Windows CI passed 356 tests and demos;
-  hosted Ubuntu Python 3.11/3.13 passed 360 tests each, package acceptance and Action
-  self-test. Published assets match the tested uploads; the tagged source archive
-  matches all 149 tracked Git blobs. #65 is resolved by the chosen strict contract.
-- **Maintenance:** PRs #78, #79 and #80 are merged, repairing cross-Python aggregation
-  (#69), unbundler selection/dependency blockers (#22), and repository permission
-  rules (#20). Their integrated source passes 407 tests and all hosted jobs.
-  See [exact-head receipts and remaining work](docs/maintenance-78-80.md).
-- **Numerical scope:** #69 is fixed on main, with all nine demo report artifacts
-  compared across actual Python 3.11/3.13 jobs. The published v0.2.0/v0 tags were
-  not moved by this maintenance pass; pin Python for historical released hashes.
-  See [numerical guarantees and limits](docs/numerical-reproducibility.md).
-  Live PR-comment delivery, PyPI and real-provider execution remain unverified.
-- **Known low item:** issue #7's stale proving-check count was corrected and closed by PR #9;
-  it never blocked the release.
-- **Release proof:** the prior 227-character Action description was corrected to 122 characters;
-  local full tests and `make ci` passed at `5c36235`; hosted CI/action self-test and Dependency
-  Graph both succeeded at that exact SHA. Remote tags and releases were verified after
-  publication.
-- **Historical audit:** merged PR evidence remains in GitHub and Git history. This file keeps
-  the next decision and exact resume path, not a duplicate transaction log.
+- **Authority:** T2 `daily-driver` in `.agent-harness/tier.json`; push/merge only
+  after the repository gate. No new owner-machine or runtime authority is implied.
+- **Merged maintenance:** #78-#86 are integrated. #85 protects inputs and prior
+  outputs during publication. #86 adds offline bundle receipts/verification and
+  trusted pins without claiming authenticity or re-evaluating policy. Their exact
+  heads, merge SHAs and CI are in [integrity progress](docs/evidence-integrity-progress.md).
+- **Current follow-up:** command-file transport, alias checks and literal Action
+  status enforcement have regression coverage. Reconcile that PR's current head,
+  hosted runner checks and final receipt before treating it as merged/qualified.
+- **Prior capabilities:** #82 resolved #30 via opt-in byte limits and diagnostic
+  failure exits. #83 added offline plans/request-bound replay; #84 qualified their
+  installed-wheel path. [Prior receipts](docs/request-evidence-progress.md) are
+  historical evidence, not CI for a later head. Existing defaults remain intact.
+- **Release boundary:** all newer capabilities are unreleased main. The recorded
+  GPL v0.2.0 publication on 2026-10-02 at 23:14:53 UTC and the approved `v0`
+  transition target `d3e80877f0bdd309a049aba5dfdfd49ea032a1d9`. Historical MIT
+  v0.1.0/v0.1.1/v0.1.2 tags, their objects, rights and attribution remain unchanged.
+  See [the release receipt](docs/releases/v0.2.0.md); this pass moved no tags.
+- **Owner decisions:** q-1/q-3 complete; q-2 deferred; q-4 requires two real users.
+  q-5/q-6 approved the specific strict GPL v0.2.0 transition on 2026-10-02 at
+  22:45:50 UTC, not future unattended releases. `HUMAN_TODO.md` remains authoritative.
+- **Marketplace:** the last recorded receipt has Latest resolving to v0.2.0 but
+  only v0.1.2 in the version chooser. Registration through the existing release
+  editor remains an unexecuted UI follow-up, not a newly verified current UI fact.
+  Stop for any new agreement/identity prompt; no new product decision is otherwise
+  needed for that previously approved UI task.
+- **Scope:** only #24 and #35 remain entry-gated in the last issue reconciliation.
+  No live provider, private artifact, credential, runtime dependency or publication
+  was introduced. Live PR-comment delivery and sdist installation remain unverified.
+- **Numerics:** main's report hashes are checked across actual Python 3.11/3.13.
+  Bundles include volatile invocation metadata and are not cross-run hashes.
+  See [numerical limits](docs/numerical-reproducibility.md) for historical releases.
 
 ## Source-of-truth precedence
 
@@ -138,9 +113,10 @@ this local checkout controls it. This repo's local tier declaration is the autho
 ## Resume
 
 **Exact resume point:** reconcile live main, open PRs, reviews and exact-head CI first.
-PRs #78-#83 are merged. Reconcile the installed-feature smoke follow-up and any
-later review findings against its current head before selecting more work. Do not redo completed
-permission/unbundler/numerical/downloader/input-control repairs.
+PRs #78-#86 are merged. Reconcile the command transport follow-up and any later
+review findings against its exact head, then use the final main-push receipt.
+[Integrity progress](docs/evidence-integrity-progress.md) is the current handoff.
+Do not repeat completed repairs or treat prior CI as proof for later code.
 
 #30 is now resolved through the opt-in API in #82. Remaining entry-gated work is
 #35 (the explicitly deferred real-provider latency boundary) and #24 (a qualified,
