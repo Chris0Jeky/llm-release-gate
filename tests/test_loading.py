@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import builtins
+import json
 
 import pytest
 
@@ -35,3 +36,33 @@ def test_open_permission_error_is_gate_config_error(tmp_path, monkeypatch, loade
     assert str(path) in message
     assert what in message
     assert isinstance(excinfo.value.__cause__, PermissionError)
+
+
+def _write(path, obj) -> str:
+    path.write_text(json.dumps(obj), encoding="utf-8")
+    return str(path)
+
+
+def _run_doc(**overrides) -> dict:
+    doc = {
+        "provider": "fake",
+        "model": "m",
+        "prompt": {"template": "$question"},
+    }
+    doc.update(overrides)
+    return doc
+
+
+def test_run_config_model_int_rejected(tmp_path):
+    path = _write(tmp_path / "run.json", _run_doc(model=123))
+    with pytest.raises(GateConfigError) as excinfo:
+        load_run_config(path, "candidate")
+    assert str(tmp_path / "run.json") in str(excinfo.value)
+
+
+@pytest.mark.parametrize("field", ["provider", "model"])
+def test_run_config_provider_model_empty_string_rejected(tmp_path, field):
+    path = _write(tmp_path / "run.json", _run_doc(**{field: ""}))
+    with pytest.raises(GateConfigError) as excinfo:
+        load_run_config(path, "candidate")
+    assert str(tmp_path / "run.json") in str(excinfo.value)
