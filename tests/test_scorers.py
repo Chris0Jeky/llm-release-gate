@@ -6,7 +6,7 @@ from llm_release_gate.adapters import build_adapter
 from llm_release_gate.adapters.extraction import ExtractionAdapter
 from llm_release_gate.errors import GateConfigError
 from llm_release_gate.loading import DatasetItem, ScorerConfig
-from llm_release_gate.scorers import build_scorers
+from llm_release_gate.scorers import aggregate_scores, build_scorers
 from llm_release_gate.scorers.abstention import AbstentionScorer
 from llm_release_gate.scorers.citations import CitationScorer
 from llm_release_gate.scorers.quality import FieldMatchScorer, KeywordQualityScorer
@@ -388,3 +388,29 @@ def test_build_scorers_rejects_duplicate_metric_owner():
     )
     with pytest.raises(GateConfigError, match="exactly one owner"):
         build_scorers(config)
+
+
+def test_aggregate_pass_and_violation_rates():
+    quality = KeywordQualityScorer({})
+    abstention = AbstentionScorer({})
+    scorers = [quality, abstention]
+    a1 = grounded_item(quality={"must_contain": ["alpha"]})
+    a2 = grounded_item(quality={"must_contain": ["alpha"]})
+    a3 = grounded_item()
+    b1 = grounded_item(should_abstain=True)
+    b2 = grounded_item(should_abstain=True)
+    scored_items = []
+    for item, text in [(a1, "alpha is here"), (a2, "nothing"), (a3, "alpha is here"), (b1, "The capital is Paris."), (b2, "I don't know")]:
+        parsed = parse_rag(text, item)
+        merged: dict = {}
+        merged.update(quality.score_item(item, parsed))
+        merged.update(abstention.score_item(item, parsed))
+        scored_items.append(merged)
+    assert scored_items[2]["quality.pass_rate"]["applicable"] is False
+    agg = aggregate_scores(scorers, scored_items)
+    assert agg["quality.pass_rate"]["value"] == 0.5
+    assert agg["quality.pass_rate"]["numerator"] == 1
+    assert agg["quality.pass_rate"]["denominator"] == 2
+    assert agg["abstention.false_answer_rate"]["value"] == 0.5
+    assert agg["abstention.false_answer_rate"]["numerator"] == 1
+    assert agg["abstention.false_answer_rate"]["denominator"] == 2
