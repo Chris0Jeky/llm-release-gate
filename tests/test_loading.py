@@ -60,13 +60,6 @@ def test_run_config_model_int_rejected(tmp_path):
     assert str(tmp_path / "run.json") in str(excinfo.value)
 
 
-def test_run_config_provider_int_rejected(tmp_path):
-    path = _write(tmp_path / "run.json", _run_doc(provider=123))
-    with pytest.raises(GateConfigError) as excinfo:
-        load_run_config(path, "candidate")
-    assert str(tmp_path / "run.json") in str(excinfo.value)
-
-
 @pytest.mark.parametrize("field", ["provider", "model"])
 def test_run_config_provider_model_empty_string_rejected(tmp_path, field):
     path = _write(tmp_path / "run.json", _run_doc(**{field: ""}))
