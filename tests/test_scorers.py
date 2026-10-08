@@ -173,6 +173,60 @@ def test_citation_scorer_skips_abstentions_but_checks_fabricated_answers():
     assert r["citations.valid_rate"]["passed"] is False
 
 
+def test_citation_no_documents_with_must_cite_fails_closed():
+    scorer = CitationScorer({})
+    item = DatasetItem(
+        id="i1",
+        input={"question": "q", "documents": []},
+        expected={"must_cite": ["d2"]},
+    )
+    cited = scorer.score_item(item, parse_rag("Fact. [doc:d2]", item))
+    assert cited["citations.valid_rate"]["applicable"] is True
+    assert cited["citations.valid_rate"]["passed"] is False
+    uncited = scorer.score_item(item, parse_rag("Fact with no marker.", item))
+    assert uncited["citations.valid_rate"]["applicable"] is True
+    assert uncited["citations.valid_rate"]["passed"] is False
+
+
+def test_citation_no_documents_abstention_stays_inapplicable():
+    scorer = CitationScorer({})
+    item = DatasetItem(
+        id="i1",
+        input={"question": "q", "documents": []},
+        expected={"must_cite": ["d2"]},
+    )
+    abstained = parse_rag("I don't know.", item)
+    assert abstained.abstained is True
+    assert scorer.score_item(item, abstained)["citations.valid_rate"]["applicable"] is False
+
+
+def test_citation_no_documents_without_must_cite_stays_inapplicable():
+    scorer = CitationScorer({})
+    bare = DatasetItem(id="i1", input={"question": "q", "documents": []}, expected={})
+    out = parse_rag("Fact. [doc:d2]", bare)
+    assert out.abstained is False
+    assert scorer.score_item(bare, out)["citations.valid_rate"]["applicable"] is False
+    empty_must_cite = DatasetItem(
+        id="i1",
+        input={"question": "q"},
+        expected={"must_cite": []},
+    )
+    out = parse_rag("Fact. [doc:d2]", empty_must_cite)
+    assert scorer.score_item(empty_must_cite, out)["citations.valid_rate"]["applicable"] is False
+
+
+def test_citation_no_documents_should_abstain_stays_inapplicable():
+    scorer = CitationScorer({})
+    item = DatasetItem(
+        id="i1",
+        input={"question": "q", "documents": []},
+        expected={"should_abstain": True, "must_cite": ["d2"]},
+    )
+    out = parse_rag("Fact. [doc:d2]", item)
+    assert out.abstained is False
+    assert scorer.score_item(item, out)["citations.valid_rate"]["applicable"] is False
+
+
 # ------------------------------------------------------------- json schema
 
 SCHEMA = {

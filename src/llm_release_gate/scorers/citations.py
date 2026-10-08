@@ -6,10 +6,10 @@ An answer's citations are VALID when:
 - when the item lists must-cite sources ("expected": {"must_cite": ["d2"]}),
   all of them are cited.
 
-Applicability: the item provided documents and the model actually answered
+Applicability: the model actually answered and the item provided documents or carries an enforceable must_cite requirement
 (an abstention carries no citations to validate; whether abstaining was right
-is the abstention scorer's call). Answers to should-abstain items ARE checked —
-a fabricated answer citing a nonexistent source should count against validity.
+is the abstention scorer's call; must_cite is enforced only for non-should-abstain items). With no documents valid_ids is empty —
+so any citation is nonexistent and must_cite is missed.
 """
 
 from __future__ import annotations
@@ -29,8 +29,12 @@ class CitationScorer(Scorer):
 
     def score_item(self, item: DatasetItem, output: ParsedOutput) -> dict[str, dict]:
         documents = item.input.get("documents", [])
-        if not documents or output.abstained:
+        if output.abstained:
             return {"citations.valid_rate": item_result(applicable=False)}
+        if not documents:
+            must_cite = item.expected.get("must_cite", [])
+            if not must_cite or item.expected.get("should_abstain"):
+                return {"citations.valid_rate": item_result(applicable=False)}
         valid_ids = {d["id"] for d in documents}
         problems = []
         if not output.citations:
