@@ -45,7 +45,7 @@ swap that *also* saves ~95% but holds quality — and passes.
 
 ## How it works
 
-You commit five small JSON files (all content-hashed into a run manifest):
+You commit five required JSON files plus an optional pricing file (six inputs with pricing) (all content-hashed into a run manifest):
 
 | Input | What it is |
 |---|---|
@@ -54,6 +54,7 @@ You commit five small JSON files (all content-hashed into a run manifest):
 | candidate config | the change under review |
 | scorer config | which scorers judge the outputs |
 | thresholds | what counts as a material regression |
+| pricing (optional) | per-model prices used for cost estimates |
 
 ```bash
 llm-release-gate gate \
