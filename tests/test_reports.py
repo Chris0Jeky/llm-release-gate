@@ -36,13 +36,21 @@ def test_verdict_word_falls_back_to_upper():
             "baseline": {"n_ok": 3, "n_items": 3, "n_errors": 0},
             "candidate": {"n_ok": 3, "n_items": 3, "n_errors": 0},
         },
-        "rules": [],
-        "metrics": {},
+        "rules": [{"metric": "quality.pass_rate", "verdict": "error"}],
+        "metrics": {
+            "quality.pass_rate": {
+                "baseline": {"available": False, "value": None, "note": "no data"},
+                "candidate": {"available": False, "value": None, "note": "no data"},
+                "delta": None,
+            },
+        },
         "tool": {"name": "llm-release-gate", "version": "0.0-test"},
         "result_hash": "r" * 64,
     }
     md = render_markdown(report)
-    assert "ERROR" in md
+    assert md.splitlines()[0] == "## \u2753 llm-release-gate: **ERROR**"
+    row = next(line for line in md.splitlines() if line.startswith("| quality.pass_rate |"))
+    assert row.endswith("| \u2753 ERROR |")
 
 
 def _reports(paths):

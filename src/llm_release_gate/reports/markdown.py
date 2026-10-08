@@ -32,7 +32,7 @@ def render_markdown(report: dict) -> str:
         lines.append("### Breached thresholds")
         lines.append("")
         for rule in breached:
-            rule_icon = _VERDICT_ICON.get(rule["verdict"], "❓")
+            rule_icon = _VERDICT_ICON[rule["verdict"]]
             implicit = " *(implicit default rule)*" if rule["implicit"] else ""
             lines.append(f"- {rule_icon} **{rule['metric']}**: {rule['message']}{implicit}")
         lines.append("")
