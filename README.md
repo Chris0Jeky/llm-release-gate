@@ -204,7 +204,7 @@ This is not source validation or producer authenticity. See [policy audit](docs/
   that fabricates policy and citations, **blocked**
 
 All models and prices in the examples are fictional (`demo-pro-1`, `demo-mini-1`); the
-fake provider replays committed fixtures byte-for-byte.
+fake provider deterministically replays committed fixtures by model/item_id (parsed text, line-ending normalized).
 
 ## Documentation
 
