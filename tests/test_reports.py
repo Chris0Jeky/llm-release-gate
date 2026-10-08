@@ -181,6 +181,13 @@ def test_percentile_nearest_rank_ceil():
         percentile([], 95)
 
 
+def test_percentile_uses_ceil_not_round():
+    assert percentile([10, 20, 30, 40], 75) == 30
+    assert percentile([10, 20, 30, 40], 50) == 20
+    with pytest.raises(ValueError):
+        percentile([], 95)
+
+
 def test_rate_metric_empty_cohort_is_unavailable():
     # Zero-denominator branch must stay unavailable (never 0.0 or "0/0").
     m = rate_metric(0, 0, "higher_better")
