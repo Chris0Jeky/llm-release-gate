@@ -1,6 +1,6 @@
 # Architecture
 
-One pipeline, five pinned inputs, one auditable verdict.
+One pipeline, five required inputs plus optional pricing, one auditable verdict.
 
 ```
  dataset.json     baseline.json    candidate.json   scorers.json  thresholds.json  pricing.json
@@ -25,7 +25,7 @@ One pipeline, five pinned inputs, one auditable verdict.
 
 | Module | Owns |
 |---|---|
-| `loading.py` | parsing + validation of the five inputs; every loader returns a line-ending-normalized JSON source sha256, except omitted optional pricing yields sha256 None via no_pricing |
+| `loading.py` | parsing + validation of the five required inputs plus optional pricing; every loader returns a line-ending-normalized JSON source sha256, except omitted optional pricing yields sha256 None via no_pricing |
 | `providers/` | `Provider` interface + registry; `fake.py` is the deterministic replay provider |
 | `adapters/` | `TaskAdapter` interface + registry; item → prompt fields, raw text → `ParsedOutput` |
 | `scorers/` | `Scorer` interface + registry + uniform aggregation; each metric has exactly one owner |
