@@ -10,6 +10,7 @@ from llm_release_gate.metrics import percentile
 
 from llm_release_gate.metrics import rate_metric
 from conftest import GOOD_RESPONSE, gate_argv
+from llm_release_gate.reports.markdown import render_markdown
 
 
 def _reports(paths):
@@ -175,3 +176,40 @@ def test_zero_applicable_rate_stays_unavailable():
     assert m["denominator"] is None
     assert m["n"] is None
     assert m["note"] == "no applicable items"
+
+
+def _minimal_markdown_report(notices):
+    return {
+        "gate": {"verdict": "pass", "notices": list(notices)},
+        "inputs": {
+            "baseline_config": {"name": "baseline", "model": "m-base", "sha256": "b" * 64},
+            "candidate_config": {"name": "candidate", "model": "m-cand", "sha256": "c" * 64},
+            "dataset": {
+                "name": "mini-golden",
+                "version": "1.0.0",
+                "n_items": 3,
+                "task": "rag",
+                "sha256": "d" * 64,
+            },
+            "scorer_config": {"sha256": "s" * 64},
+            "thresholds": {"sha256": "t" * 64},
+            "pricing_table": {"sha256": "", "version": "test-1"},
+        },
+        "runs": {
+            "baseline": {"n_ok": 3, "n_items": 3, "n_errors": 0},
+            "candidate": {"n_ok": 3, "n_items": 3, "n_errors": 0},
+        },
+        "rules": [],
+        "metrics": {},
+        "tool": {"name": "llm-release-gate", "version": "0.0-test"},
+        "result_hash": "r" * 64,
+    }
+
+
+def test_markdown_renders_gate_notices():
+    notice = "candidate had provider errors on 2 items"
+    md = render_markdown(_minimal_markdown_report([notice]))
+    assert f"> \u26a0\ufe0f {notice}" in md
+
+    md_empty = render_markdown(_minimal_markdown_report([]))
+    assert not any(line.startswith(">") for line in md_empty.splitlines())
