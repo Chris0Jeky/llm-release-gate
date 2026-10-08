@@ -377,3 +377,10 @@ def test_build_scorers_rejects_duplicate_metric_owner():
     )
     with pytest.raises(GateConfigError, match="exactly one owner"):
         build_scorers(config)
+    unknown = ScorerConfig(
+        scorers=[{"type": "not_a_scorer", "options": {}}],
+        path="test",
+        sha256="test",
+    )
+    with pytest.raises(GateConfigError, match="unknown scorer type"):
+        build_scorers(unknown)
