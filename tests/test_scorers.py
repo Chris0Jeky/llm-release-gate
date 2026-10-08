@@ -89,6 +89,19 @@ def test_field_match_missing_key_fails():
     assert "<missing>" in result["quality.pass_rate"]["detail"]
 
 
+def test_field_match_rejects_non_dict_json():
+    scorer = FieldMatchScorer({})
+    adapter = ExtractionAdapter()
+    item = DatasetItem(id="x", input={"text": "t"},
+                       expected={"fields": {"vendor": "Acme"}})
+    result = scorer.score_item(item, adapter.parse('[{"vendor":"Acme"}]', item))
+    assert result["quality.pass_rate"]["passed"] is False
+    assert result["quality.pass_rate"]["detail"] == "output is not a JSON object"
+    result = scorer.score_item(item, adapter.parse('42', item))
+    assert result["quality.pass_rate"]["passed"] is False
+    assert result["quality.pass_rate"]["detail"] == "output is not a JSON object"
+
+
 # ------------------------------------------------------------- abstention
 
 def test_abstention_four_quadrants():
