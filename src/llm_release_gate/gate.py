@@ -25,6 +25,8 @@ Semantics:
 
 from __future__ import annotations
 
+import math
+
 from . import REPORT_SCHEMA_VERSION, TOOL_NAME, __version__
 from .errors import GateConfigError
 from .hashing import content_hash
@@ -97,6 +99,18 @@ def _check_constraint(
     raise GateConfigError(f"unknown constraint '{name}'")  # loading validates; belt+braces
 
 
+def _is_unusable_metric(metric: dict) -> bool:
+    """Fail-closed availability: usable only when marked available with a finite value."""
+    if metric.get("available") is not True:
+        return True
+    if "value" not in metric or metric.get("value") is None:
+        return False  # malformed; _aggregate_value reports the config error
+    try:
+        return not math.isfinite(float(metric.get("value")))
+    except (TypeError, ValueError, OverflowError):
+        return True
+
+
 def _require_aggregate(metric: dict, rule_metric: str, side: str) -> dict:
     if not isinstance(metric, dict):
         raise GateConfigError(
@@ -139,9 +153,9 @@ def _evaluate_rule(rule: ThresholdRule, baseline_m: dict, candidate_m: dict, imp
         missing = []
         _require_aggregate(candidate_m, rule.metric, "candidate")
         _require_aggregate(baseline_m, rule.metric, "baseline")
-        if not candidate_m.get("available"):
+        if _is_unusable_metric(candidate_m):
             missing.append(f"candidate: {candidate_m.get('note') or 'unavailable'}")
-        if needs_baseline and not baseline_m.get("available"):
+        if needs_baseline and _is_unusable_metric(baseline_m):
             missing.append(f"baseline: {baseline_m.get('note') or 'unavailable'}")
         if missing:
             checks.append({

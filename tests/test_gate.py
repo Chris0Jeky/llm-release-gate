@@ -133,6 +133,67 @@ def test_unavailable_skip_yields_skipped():
     assert all(c["status"] == "unavailable" for c in rule["checks"])
 
 
+def test_nonfinite_available_metric_does_not_pass():
+    from decimal import Decimal
+
+    def _raw(value, direction, unit="rate"):
+        return {
+            "value": value,
+            "available": True,
+            "unit": unit,
+            "direction": direction,
+            "numerator": None,
+            "denominator": None,
+            "n": 1,
+            "kind": "measured",
+            "note": None,
+        }
+
+    def _rule_verdict(thresholds, baseline_q, candidate_q):
+        err = rate_metric(0, 10, LOWER)
+        baseline_aggs = {"q": baseline_q, "errors.error_rate": err}
+        candidate_aggs = {"q": candidate_q, "errors.error_rate": err}
+        verdicts = evaluate_thresholds(thresholds, baseline_aggs, candidate_aggs)
+        return next(v for v in verdicts if v["metric"] == "q")
+
+    drop_rule = Thresholds(
+        rules=[ThresholdRule("q", {"max_drop_pct": 5})],
+        path="t.json",
+        sha256="sha256:test",
+    )
+    finite_candidate = _raw(0.5, HIGHER)
+    # Non-finite baseline marked available must not pass a higher_better drop guard.
+    for bad_baseline in (
+        _raw(float("nan"), HIGHER),
+        _raw(Decimal("NaN"), HIGHER),
+        _raw(float("inf"), HIGHER),
+        _raw(Decimal("Infinity"), HIGHER),
+    ):
+        rule = _rule_verdict(drop_rule, bad_baseline, finite_candidate)
+        assert rule["verdict"] != "pass"
+        assert all(c["status"] == "unavailable" for c in rule["checks"])
+
+    # Non-finite candidate on a lower_better increase guard must not pass either.
+    increase_rule = Thresholds(
+        rules=[ThresholdRule("q", {"max_increase_pct": 5})],
+        path="t.json",
+        sha256="sha256:test",
+    )
+    rule = _rule_verdict(
+        increase_rule,
+        _raw(1000.0, LOWER, unit="ms"),
+        _raw(float("nan"), LOWER, unit="ms"),
+    )
+    assert rule["verdict"] != "pass"
+    assert all(c["status"] == "unavailable" for c in rule["checks"])
+
+    # Finite behavior is unchanged: ~1% drop passes a 5% guard, 10% drop fails it.
+    rule = _rule_verdict(drop_rule, _raw(1.0, HIGHER), _raw(0.99, HIGHER))
+    assert rule["verdict"] == "pass"
+    rule = _rule_verdict(drop_rule, _raw(1.0, HIGHER), _raw(0.90, HIGHER))
+    assert rule["verdict"] != "pass"
+
+
 def test_zero_baseline_pct():
     breached, observed, _ = _check_constraint("max_increase_pct", 10, 0, 0.5)
     assert breached is True
