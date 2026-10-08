@@ -64,6 +64,13 @@ def test_keyword_quality_pass_fail_and_applicability():
         "quality.pass_rate"]["applicable"] is False
 
 
+def test_keyword_quality_inapplicable_without_spec():
+    scorer = KeywordQualityScorer({})
+    item = grounded_item()
+    result = scorer.score_item(item, parse_rag("The sky is blue. [doc:d1]", item))
+    assert result["quality.pass_rate"]["applicable"] is False
+
+
 def test_field_match_exact_and_mismatch():
     scorer = FieldMatchScorer({})
     adapter = ExtractionAdapter()
