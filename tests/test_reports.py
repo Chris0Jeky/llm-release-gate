@@ -10,7 +10,47 @@ from llm_release_gate.metrics import percentile
 
 from llm_release_gate.metrics import rate_metric
 from conftest import GOOD_RESPONSE, gate_argv
+from llm_release_gate.reports import verdict_word
 from llm_release_gate.reports.markdown import render_markdown
+
+
+def test_verdict_word_falls_back_to_upper():
+    assert verdict_word("error") == "ERROR"
+    report = {
+        "gate": {"verdict": "error", "notices": []},
+        "inputs": {
+            "baseline_config": {"name": "baseline", "model": "m-base", "sha256": "b" * 64},
+            "candidate_config": {"name": "candidate", "model": "m-cand", "sha256": "c" * 64},
+            "dataset": {
+                "name": "mini-golden",
+                "version": "1.0.0",
+                "n_items": 3,
+                "task": "rag",
+                "sha256": "d" * 64,
+            },
+            "scorer_config": {"sha256": "s" * 64},
+            "thresholds": {"sha256": "t" * 64},
+            "pricing_table": {"sha256": "", "version": "test-1"},
+        },
+        "runs": {
+            "baseline": {"n_ok": 3, "n_items": 3, "n_errors": 0},
+            "candidate": {"n_ok": 3, "n_items": 3, "n_errors": 0},
+        },
+        "rules": [{"metric": "quality.pass_rate", "verdict": "error"}],
+        "metrics": {
+            "quality.pass_rate": {
+                "baseline": {"available": False, "value": None, "note": "no data"},
+                "candidate": {"available": False, "value": None, "note": "no data"},
+                "delta": None,
+            },
+        },
+        "tool": {"name": "llm-release-gate", "version": "0.0-test"},
+        "result_hash": "r" * 64,
+    }
+    md = render_markdown(report)
+    assert md.splitlines()[0] == "## \u2753 llm-release-gate: **ERROR**"
+    row = next(line for line in md.splitlines() if line.startswith("| quality.pass_rate |"))
+    assert row.endswith("| \u2753 ERROR |")
 
 
 def _reports(paths):

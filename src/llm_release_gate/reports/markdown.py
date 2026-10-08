@@ -13,7 +13,7 @@ def render_markdown(report: dict) -> str:
     gate = report["gate"]
     inputs = report["inputs"]
     runs = report["runs"]
-    icon = _VERDICT_ICON[gate["verdict"]]
+    icon = _VERDICT_ICON.get(gate["verdict"], "❓")
     lines: list[str] = []
     heuristic_used = False
 
@@ -67,7 +67,7 @@ def render_markdown(report: dict) -> str:
                 cells[side] = fmt_value(m)
         b_txt, c_txt = cells["b"], cells["c"]
         gate_cells = [
-            f"{_VERDICT_ICON[r['verdict']]} {verdict_word(r['verdict'])}"
+            f"{_VERDICT_ICON.get(r['verdict'], '❓')} {verdict_word(r['verdict'])}"
             for r in rules_by_metric.get(key, [])
         ]
         gate_cell = ", ".join(gate_cells) if gate_cells else "—"
