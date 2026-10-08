@@ -114,6 +114,59 @@ def test_rate_metric_empty_cohort_is_unavailable():
     assert m_neg["note"] == "no applicable items"
 
 
+def test_markdown_breached_section_filters_and_marks_implicit():
+    from llm_release_gate.reports.markdown import render_markdown
+
+    def _unavailable(note):
+        return {"available": False, "value": None, "note": note}
+
+    report = {
+        "gate": {"verdict": "fail", "notices": []},
+        "inputs": {
+            "baseline_config": {"name": "baseline", "model": "model-b", "sha256": "b" * 64},
+            "candidate_config": {"name": "candidate", "model": "model-c", "sha256": "c" * 64},
+            "dataset": {
+                "name": "ds", "version": "1", "n_items": 3, "task": "rag", "sha256": "d" * 64,
+            },
+            "scorer_config": {"sha256": "s" * 64},
+            "thresholds": {"sha256": "t" * 64},
+            "pricing_table": {"version": "1", "sha256": ""},
+        },
+        "runs": {
+            "baseline": {"n_ok": 3, "n_items": 3, "n_errors": 0},
+            "candidate": {"n_ok": 3, "n_items": 3, "n_errors": 0},
+        },
+        "rules": [
+            {"metric": "cost.total_usd", "verdict": "pass", "message": "cost ok", "implicit": False},
+            {
+                "metric": "quality.pass_rate", "verdict": "fail",
+                "message": "drop 0.5 below threshold", "implicit": True,
+            },
+            {
+                "metric": "latency.p95_ms", "verdict": "warn",
+                "message": "latency near threshold", "implicit": False,
+            },
+        ],
+        "metrics": {
+            key: {"baseline": _unavailable(note), "candidate": _unavailable(note), "delta": None}
+            for key, note in (
+                ("cost.total_usd", "no pricing"),
+                ("quality.pass_rate", "no data"),
+                ("latency.p95_ms", "no data"),
+            )
+        },
+        "tool": {"name": "llm-release-gate", "version": "0.0-test"},
+        "result_hash": "abc123",
+    }
+    md = render_markdown(report)
+    assert "### Breached thresholds" in md
+    breached = md.split("### Breached thresholds")[1].split("### Metrics")[0]
+    assert "- ❌ **quality.pass_rate**: drop 0.5 below threshold *(implicit default rule)*" in breached
+    assert "⚠️ **latency.p95_ms**" in breached
+    assert "latency near threshold" in breached
+    assert "cost.total_usd" not in breached
+
+
 def test_zero_applicable_rate_stays_unavailable():
     m = rate_metric(0, 0, "higher_better")
     assert m["value"] is None
