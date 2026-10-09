@@ -328,6 +328,23 @@ def test_unenforceable_schemas_are_rejected_at_construction():
                                      "additionalProperties": {"type": "string"}}})
 
 
+def test_schema_definition_rejects_bad_required_and_integer_strictness():
+    with pytest.raises(GateConfigError, match="required"):
+        JsonSchemaScorer({"schema": {"type": "object", "required": "vendor"}})
+    with pytest.raises(GateConfigError, match="enum"):
+        JsonSchemaScorer({"schema": {"type": "string", "enum": "USD"}})
+    with pytest.raises(GateConfigError, match="additionalProperties"):
+        JsonSchemaScorer({"schema": {"type": "object", "additionalProperties": "false"}})
+    with pytest.raises(GateConfigError, match="properties"):
+        JsonSchemaScorer({"schema": {"type": "object", "properties": []}})
+    errors = validate_against_schema(True, {"type": "integer"})
+    assert any("got boolean" in e for e in errors), errors
+    assert validate_against_schema(
+        {"vendor": "A", "extra": 1},
+        {"type": "object", "properties": {"vendor": {"type": "string"}}},
+    ) == []
+
+
 def test_json_semantics_bool_is_not_int():
     # enum: JSON true must not satisfy an integer enum
     errors = validate_against_schema({"priority": True},
