@@ -247,6 +247,15 @@ def test_citation_no_documents_should_abstain_stays_inapplicable():
     assert scorer.score_item(item, out)["citations.valid_rate"]["applicable"] is False
 
 
+def test_citation_inapplicable_without_documents():
+    scorer = CitationScorer({})
+    item = DatasetItem(id="i1", input={"question": "q"}, expected={})
+    out = parse_rag("Fact. [doc:d1]", item)
+    assert out.abstained is False
+    assert out.citations == ["d1"]
+    assert scorer.score_item(item, out)["citations.valid_rate"]["applicable"] is False
+
+
 # ------------------------------------------------------------- json schema
 
 SCHEMA = {
