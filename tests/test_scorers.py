@@ -133,6 +133,18 @@ def test_abstention_four_quadrants():
     assert r["abstention.over_abstention_rate"]["applicable"] is False
 
 
+def test_abstention_marks_other_metric_inapplicable():
+    scorer = AbstentionScorer({})
+    should = grounded_item(should_abstain=True)
+    should_not = grounded_item(should_abstain=False)
+    answered_should = parse_rag("It is 42. [doc:d1]", should)
+    answered_should_not = parse_rag("It is 42. [doc:d1]", should_not)
+    r = scorer.score_item(should, answered_should)
+    assert r["abstention.over_abstention_rate"]["applicable"] is False
+    r = scorer.score_item(should_not, answered_should_not)
+    assert r["abstention.false_answer_rate"]["applicable"] is False
+
+
 # ------------------------------------------------------------- citations
 
 def test_citation_validity_cases():
