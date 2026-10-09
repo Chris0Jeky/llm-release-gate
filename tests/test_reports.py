@@ -253,3 +253,17 @@ def test_markdown_renders_gate_notices():
 
     md_empty = render_markdown(_minimal_markdown_report([]))
     assert not any(line.startswith(">") for line in md_empty.splitlines())
+
+
+def test_markdown_formats_available_cost_and_latency(mini_gate):
+    paths = mini_gate()
+    assert main(gate_argv(paths)) == 0
+    report, md, _ = _reports(paths)
+    cost = report["metrics"]["cost.total_usd"]["baseline"]
+    assert cost["available"] is True and cost["value"] is not None
+    cost_row = next(line for line in md.splitlines() if line.startswith("| cost.total_usd |"))
+    assert "| $0.004140" in cost_row
+    latency = report["metrics"]["latency.p50_ms"]["baseline"]
+    assert latency["available"] is True and latency["value"] is not None
+    latency_row = next(line for line in md.splitlines() if line.startswith("| latency.p50_ms |"))
+    assert "| 500 ms" in latency_row
