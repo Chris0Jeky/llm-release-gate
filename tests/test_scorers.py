@@ -165,6 +165,13 @@ def test_citation_missed_must_cite_fails():
     assert "required sources not cited" in missed["citations.valid_rate"]["detail"]
 
 
+def test_citation_ignores_must_cite_on_abstain_items():
+    scorer = CitationScorer({})
+    item = grounded_item(should_abstain=True, must_cite=["d2"])
+    result = scorer.score_item(item, parse_rag("Fact. [doc:d1]", item))
+    assert result["citations.valid_rate"]["passed"] is True
+
+
 def test_hedged_fabrication_is_an_answer_not_an_abstention():
     # "I don't know ... but here's a cited claim" must count as answering:
     # false_answer_rate records the violation and the citation gets validated.
