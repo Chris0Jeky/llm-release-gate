@@ -267,3 +267,91 @@ def test_markdown_formats_available_cost_and_latency(mini_gate):
     assert latency["available"] is True and latency["value"] is not None
     latency_row = next(line for line in md.splitlines() if line.startswith("| latency.p50_ms |"))
     assert "| 500 ms" in latency_row
+
+
+def test_fmt_delta_shapes():
+    """Pin fmt_delta strings: em dash for None, pp for rates, parens pct."""
+    from llm_release_gate.reports import fmt_delta
+
+    def entry(unit, abs_val, pct):
+        return {
+            "candidate": {"unit": unit},
+            "delta": None if abs_val is None else {"abs": abs_val, "pct": pct},
+        }
+
+    # delta None -> em dash (U+2014); pct ignored.
+    assert fmt_delta(entry("rate", None, None)) == "—"
+    assert fmt_delta(entry("usd", None, None)) == "—"
+
+    # Rates use a 'pp' suffix (never '%'); the pct argument is ignored.
+    assert fmt_delta(entry("rate", -0.005, None)) == "-0.5pp"
+    assert fmt_delta(entry("rate", 0.0125, 10)) == "+1.2pp"
+
+    # Non-rates with pct use the 'abs (+x.x%)' parenthesized form.
+    assert fmt_delta(entry("usd", 0.001, 12.5)) == "+0.001000 (+12.5%)"
+    assert fmt_delta(entry("tokens", -2000.0, -10.0)) == "-2,000 (-10.0%)"
+
+    # Non-rates with pct None render abs only (no parens, no percent).
+    assert fmt_delta(entry("tokens", 3.0, None)) == "+3"
+    assert fmt_delta(entry("tokens", -4.0, None)) == "-4"
+
+
+def test_markdown_and_html_render_deltas():
+    """Markdown/HTML delta cells embed the exact fmt_delta strings."""
+    from llm_release_gate.reports import fmt_delta
+    from llm_release_gate.reports.html import render_html
+
+    def avail(unit, value, **extra):
+        metric = {
+            "available": True,
+            "value": value,
+            "unit": unit,
+            "numerator": None,
+            "denominator": None,
+            "n": None,
+            "note": None,
+        }
+        metric.update(extra)
+        return metric
+
+    rate_entry = {
+        "baseline": avail("rate", 0.5, numerator=1, denominator=2),
+        "candidate": avail("rate", 0.495, numerator=1, denominator=2),
+        "delta": {"abs": -0.005, "pct": 3.0},
+    }
+    cost_entry = {
+        "baseline": avail("usd", 0.004),
+        "candidate": avail("usd", 0.003),
+        "delta": {"abs": -0.001, "pct": -10.0},
+    }
+    report = _minimal_markdown_report([])
+    report["metrics"] = {
+        "quality.pass_rate": rate_entry,
+        "cost.total_usd": cost_entry,
+    }
+    report["items"] = []
+
+    rate_expected = fmt_delta(rate_entry)
+    cost_expected = fmt_delta(cost_entry)
+    assert rate_expected == "-0.5pp"
+    assert cost_expected == "-0.001000 (-10.0%)"
+
+    md = render_markdown(report)
+    rate_row = next(
+        line for line in md.splitlines() if line.startswith("| quality.pass_rate |")
+    )
+    cost_row = next(
+        line for line in md.splitlines() if line.startswith("| cost.total_usd |")
+    )
+    assert rate_expected in rate_row
+    assert rate_row.split("|")[4].strip() == rate_expected
+    assert rate_expected.endswith("pp")
+    assert "%" not in rate_expected
+    assert cost_expected in cost_row
+    assert cost_row.split("|")[4].strip() == cost_expected
+    assert "(+" in cost_expected or "(-" in cost_expected
+    assert cost_expected.endswith("%)")
+
+    html_doc = render_html(report)
+    assert rate_expected in html_doc
+    assert cost_expected in html_doc
