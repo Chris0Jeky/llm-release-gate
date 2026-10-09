@@ -125,6 +125,44 @@ def test_failed_items_show_detail_in_reports(mini_gate):
     assert "missing expected terms" in html
 
 
+def test_markdown_breached_section_pins_heading_and_implicit(mini_gate):
+    bad = {k: dict(v) for k, v in GOOD_RESPONSE.items()}
+    bad["r2"]["text"] = "The capital is Freedonia City. [doc:s1]"
+    paths = mini_gate(candidate_responses=bad)
+    assert main(gate_argv(paths)) == 1
+    report, md, _ = _reports(paths)
+    assert report["gate"]["verdict"] == "fail"
+    failing = next(
+        r for r in report["rules"]
+        if r["metric"] == "quality.pass_rate" and r["verdict"] == "fail"
+    )
+    assert "drop 0.5" in failing["message"]
+    assert "### Breached thresholds" in md
+    breached = md.split("### Breached thresholds")[1]
+    if "### Metrics" in breached:
+        breached = breached.split("### Metrics")[0]
+    assert "- ❌ **quality.pass_rate**:" in breached
+    breached_line = next(
+        line for line in breached.splitlines()
+        if "- ❌ **quality.pass_rate**:" in line
+    )
+    assert "drop 0.5" in breached_line
+    # The default-thresholds failing rule is explicit, so pin the implicit
+    # marker by re-rendering the same report with that rule marked implicit.
+    import copy
+
+    implicit_report = copy.deepcopy(report)
+    for rule in implicit_report["rules"]:
+        if rule["metric"] == "quality.pass_rate" and rule["verdict"] == "fail":
+            rule["implicit"] = True
+    implicit_md = render_markdown(implicit_report)
+    implicit_breached = implicit_md.split("### Breached thresholds")[1]
+    if "### Metrics" in implicit_breached:
+        implicit_breached = implicit_breached.split("### Metrics")[0]
+    assert "- ❌ **quality.pass_rate**:" in implicit_breached
+    assert "*(implicit default rule)*" in implicit_breached
+
+
 def test_percentile_nearest_rank_ceil():
     # Nearest-rank: rank = ceil(p/100 * n), 1-indexed; ceil, not floor/round.
     assert percentile([10, 20, 30, 40, 100], 95) == 100  # ceil(4.75) = 5th
