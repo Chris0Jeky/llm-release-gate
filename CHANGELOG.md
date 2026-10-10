@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Unknown keys in run configs and scorer configs (top level and scorer entries) are now
+  configuration errors (exit 2) naming the allowed keys, instead of being ignored.
+
 - Add read-only consumer-policy audits of verified stored aggregates, with optional
   evidence/policy pins and separate original/new verdicts. Reject malformed direct
   evaluator inputs before computing policy outcomes.

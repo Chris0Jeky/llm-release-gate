@@ -130,6 +130,15 @@ def _require(data: dict, key: str, path: str, what: str) -> Any:
     return data[key]
 
 
+def _reject_unknown_keys(data: dict, allowed: tuple[str, ...], where: str) -> None:
+    unknown = sorted(k for k in data if k not in allowed)
+    if unknown:
+        raise GateConfigError(
+            f"{where}: unknown key(s): {', '.join(unknown)}; "
+            f"allowed keys: {', '.join(allowed)}"
+        )
+
+
 def _optional_object(data: dict, key: str, where: str) -> dict:
     """An optional object field: absent or null loads as {}; any other
     non-object value is a configuration error naming the location."""
@@ -332,6 +341,11 @@ def load_run_config(path: str, role: str) -> RunConfig:
     data, digest = _load_json_file(path, f"{role} config")
     if not isinstance(data, dict):
         raise GateConfigError(f"{role} config {path}: top level must be a JSON object")
+    _reject_unknown_keys(
+        data,
+        ("name", "provider", "model", "params", "prompt", "provider_options"),
+        f"{role} config {path}",
+    )
     if "name" not in data:
         name = role
     else:
@@ -381,12 +395,16 @@ def load_scorer_config(path: str) -> ScorerConfig:
     data, digest = _load_json_file(path, "scorer config")
     if not isinstance(data, dict):
         raise GateConfigError(f"scorer config {path}: top level must be a JSON object")
+    _reject_unknown_keys(data, ("scorers",), f"scorer config {path}")
     raw_scorers = _require(data, "scorers", path, "scorer config")
     if not isinstance(raw_scorers, list) or not raw_scorers:
         raise GateConfigError(f"scorer config {path}: 'scorers' must be a non-empty list")
     scorers = []
     for i, entry in enumerate(raw_scorers):
-        scorer_type = entry.get("type") if isinstance(entry, dict) else None
+        if not isinstance(entry, dict):
+            raise GateConfigError(f"scorer config {path}: scorer #{i} 'type' must be a non-empty string")
+        _reject_unknown_keys(entry, ("type", "options"), f"scorer config {path}: scorer #{i}")
+        scorer_type = entry.get("type")
         if not isinstance(scorer_type, str) or not scorer_type:
             raise GateConfigError(f"scorer config {path}: scorer #{i} 'type' must be a non-empty string")
         scorers.append({"type": scorer_type, "options": _optional_object(entry, "options", f"scorer config {path}: scorer #{i}")})
