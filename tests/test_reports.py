@@ -53,6 +53,14 @@ def test_verdict_word_falls_back_to_upper():
     assert row.endswith("| \u2753 ERROR |")
 
 
+def test_verdict_word_maps_all_levels():
+    assert verdict_word("pass") == "PASS"
+    assert verdict_word("fail") == "FAIL"
+    assert verdict_word("warn") == "WARN"
+    assert verdict_word("skipped") == "SKIPPED"
+    assert verdict_word("quarantined") == "QUARANTINED"
+
+
 def _reports(paths):
     report = json.loads(open(f"{paths['out']}/report.json", encoding="utf-8").read())
     md = open(f"{paths['out']}/report.md", encoding="utf-8").read()
