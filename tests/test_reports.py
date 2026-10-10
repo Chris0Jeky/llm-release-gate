@@ -393,3 +393,55 @@ def test_markdown_and_html_render_deltas():
     html_doc = render_html(report)
     assert rate_expected in html_doc
     assert cost_expected in html_doc
+
+
+def test_html_item_cells_for_na_error_and_abstain():
+    import html as _html
+
+    from llm_release_gate.reports.html import render_html
+
+    hostile = 'boom <b>down</b> & <script>alert("e")</script>'
+    abstained_pass = {
+        "status": "ok",
+        "error": None,
+        "text": None,
+        "abstained": True,
+        "scores": {
+            "quality.pass_rate": {"applicable": True, "passed": True, "detail": None},
+        },
+    }
+    report = _minimal_markdown_report([])
+    report["items"] = [
+        {
+            "id": "r1",
+            "baseline": None,
+            "candidate": {"status": "error", "error": hostile},
+        },
+        {
+            "id": "r2",
+            "baseline": {
+                "status": "ok",
+                "error": None,
+                "text": None,
+                "abstained": False,
+                "scores": {
+                    "quality.pass_rate": {
+                        "applicable": True,
+                        "passed": True,
+                        "detail": None,
+                    },
+                },
+            },
+            "candidate": abstained_pass,
+        },
+    ]
+
+    out = render_html(report)
+
+    assert '<span class="badge na">N/A</span>' in out
+    assert '<span class="badge error">ERROR</span>' in out
+    assert _html.escape(hostile) in out  # escaped error text
+    assert hostile not in out
+    assert '<span class="note">abstained</span>' in out  # abstained branch
+
+    assert out.count('<span class="badge na">N/A</span>') == 1
