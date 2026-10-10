@@ -256,6 +256,13 @@ def test_zero_applicable_rate_stays_unavailable():
     assert m["note"] == "no applicable items"
 
 
+def test_rate_metric_unavailable_keeps_custom_note():
+    m = rate_metric(0, 0, "higher_better", note="why")
+    assert m["value"] is None
+    assert m["available"] is False
+    assert m["note"] == "why"
+
+
 def _minimal_markdown_report(notices):
     return {
         "gate": {"verdict": "pass", "notices": list(notices)},
