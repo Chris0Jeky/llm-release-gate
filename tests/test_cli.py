@@ -3,8 +3,12 @@
 import json
 import os
 
+import pytest
+
 from llm_release_gate.cli import main
+from llm_release_gate.errors import GateConfigError
 from llm_release_gate.hashing import file_sha256
+from llm_release_gate.loading import load_dataset
 
 from conftest import GOOD_RESPONSE, gate_argv, write_json
 
@@ -170,3 +174,39 @@ def test_internal_errors_exit_two_not_one(mini_gate, monkeypatch, capsys):
     monkeypatch.setattr(cli_mod, "build_report", boom)
     assert main(gate_argv(paths)) == 2
     assert "internal error" in capsys.readouterr().err
+
+
+def test_empty_must_contain_rejected(tmp_path):
+    path = write_json(tmp_path / "dataset.json", {
+        "name": "d", "version": "1", "task": "rag",
+        "items": [
+            {"id": "r1", "input": {}, "expected": {"quality": {"must_contain": [""]}}},
+        ],
+    })
+    with pytest.raises(GateConfigError, match=r"expected\.quality\.must_contain"):
+        load_dataset(path)
+
+
+def test_whitespace_must_not_contain_rejected(tmp_path):
+    path = write_json(tmp_path / "dataset.json", {
+        "name": "d", "version": "1", "task": "rag",
+        "items": [
+            {"id": "r1", "input": {}, "expected": {"quality": {"must_not_contain": ["  "]}}},
+        ],
+    })
+    with pytest.raises(GateConfigError, match=r"expected\.quality\.must_not_contain"):
+        load_dataset(path)
+
+
+def test_valid_quality_terms_still_load(tmp_path):
+    path = write_json(tmp_path / "dataset.json", {
+        "name": "d", "version": "1", "task": "rag",
+        "items": [
+            {"id": "r1", "input": {},
+             "expected": {"quality": {"must_contain": ["blue"], "must_not_contain": ["red"]}}},
+        ],
+    })
+    dataset = load_dataset(path)
+    assert dataset.items[0].expected == {
+        "quality": {"must_contain": ["blue"], "must_not_contain": ["red"]}
+    }
