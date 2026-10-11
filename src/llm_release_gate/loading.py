@@ -205,11 +205,11 @@ def _validate_expected(expected: dict, path: str, i: int, item_id: str) -> None:
             if sub in quality:
                 value = quality[sub]
                 if not isinstance(value, list) or any(
-                    not isinstance(elt, str) for elt in value
+                    not isinstance(elt, str) or not elt.strip() for elt in value
                 ):
                     raise GateConfigError(
                         f"dataset {path}: item #{i} '{item_id}' field "
-                        f"'expected.quality.{sub}' must be a list of strings"
+                        f"'expected.quality.{sub}' must be a list of non-empty strings"
                     )
     if "must_cite" in expected:
         value = expected["must_cite"]
