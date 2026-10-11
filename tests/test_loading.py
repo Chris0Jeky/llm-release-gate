@@ -8,7 +8,12 @@ import json
 import pytest
 
 from llm_release_gate.errors import GateConfigError
-from llm_release_gate.loading import load_dataset, load_run_config, load_thresholds
+from llm_release_gate.loading import (
+    load_dataset,
+    load_run_config,
+    load_scorer_config,
+    load_thresholds,
+)
 
 
 @pytest.mark.parametrize(
@@ -66,3 +71,37 @@ def test_run_config_provider_model_empty_string_rejected(tmp_path, field):
     with pytest.raises(GateConfigError) as excinfo:
         load_run_config(path, "candidate")
     assert str(tmp_path / "run.json") in str(excinfo.value)
+
+
+@pytest.mark.parametrize(
+    "filename,raw,loader,dup_key",
+    [
+        (
+            "dataset.json",
+            '{"name": "a", "name": "b", "version": "1", "task": "qa",'
+            ' "items": [{"id": "x"}]}',
+            load_dataset,
+            "name",
+        ),
+        (
+            "scorer.json",
+            '{"scorers": [{"type": "a", "type": "b"}]}',
+            load_scorer_config,
+            "type",
+        ),
+        (
+            "thresholds.json",
+            '{"rules": [{"metric": "m", "max_drop_abs": 1, "max_drop_abs": 2}]}',
+            load_thresholds,
+            "max_drop_abs",
+        ),
+    ],
+)
+def test_duplicate_keys_rejected(tmp_path, filename, raw, loader, dup_key):
+    path = tmp_path / filename
+    path.write_text(raw, encoding="utf-8")
+    with pytest.raises(GateConfigError) as excinfo:
+        loader(str(path))
+    message = str(excinfo.value)
+    assert dup_key in message
+    assert str(path) in message

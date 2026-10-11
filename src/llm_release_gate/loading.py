@@ -99,6 +99,15 @@ def _open_regular_file(path: str, flags: int) -> int:
     return fd
 
 
+def _duplicate_free_object(pairs: list[tuple[str, Any]], path: str, what: str) -> dict:
+    obj: dict = {}
+    for key, value in pairs:
+        if key in obj:
+            raise GateConfigError(f"{what} {path}: duplicate key '{key}'")
+        obj[key] = value
+    return obj
+
+
 def _load_json_file(path: str, what: str) -> tuple[Any, str]:
     try:
         with open(path, "rb", opener=_open_regular_file) as fh:
@@ -112,7 +121,10 @@ def _load_json_file(path: str, what: str) -> tuple[Any, str]:
     except (OSError, ValueError) as exc:
         raise GateConfigError(f"{what} file could not be read: {path} ({exc})") from exc
     try:
-        data = json.loads(source.decode("utf-8"))
+        data = json.loads(
+            source.decode("utf-8"),
+            object_pairs_hook=lambda pairs: _duplicate_free_object(pairs, path, what),
+        )
     except UnicodeDecodeError as exc:
         raise GateConfigError(f"{what} file is not valid UTF-8: {path} ({exc})") from exc
     except json.JSONDecodeError as exc:
