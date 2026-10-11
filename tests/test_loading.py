@@ -150,3 +150,43 @@ def test_pricing_overflow_version_rejected(tmp_path):
     with pytest.raises(GateConfigError) as excinfo:
         load_pricing(str(path))
     assert str(path) in str(excinfo.value)
+
+
+def _dataset_doc(**overrides) -> dict:
+    doc = {"name": "a", "version": "1", "task": "qa", "items": [{"id": "x"}]}
+    doc.update(overrides)
+    return doc
+
+
+@pytest.mark.parametrize("field", ["name", "task"])
+def test_dataset_whitespace_name_task_rejected(tmp_path, field):
+    path = _write(tmp_path / "dataset.json", _dataset_doc(**{field: "   "}))
+    with pytest.raises(GateConfigError) as excinfo:
+        load_dataset(path)
+    assert str(path) in str(excinfo.value)
+
+
+def test_dataset_whitespace_item_id_rejected(tmp_path):
+    path = _write(
+        tmp_path / "dataset.json", _dataset_doc(items=[{"id": "   "}])
+    )
+    with pytest.raises(GateConfigError) as excinfo:
+        load_dataset(path)
+    message = str(excinfo.value)
+    assert str(path) in message
+    assert "item #0" in message
+
+
+def test_dataset_whitespace_grounded_doc_id_rejected(tmp_path):
+    path = _write(
+        tmp_path / "dataset.json",
+        _dataset_doc(
+            task="rag",
+            items=[{"id": "x", "input": {"documents": [{"id": "  ", "text": "t"}]}}],
+        ),
+    )
+    with pytest.raises(GateConfigError) as excinfo:
+        load_dataset(path)
+    message = str(excinfo.value)
+    assert str(path) in message
+    assert "item #0" in message

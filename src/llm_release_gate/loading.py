@@ -255,7 +255,7 @@ def _validate_grounded_documents(item_input: dict, path: str, i: int, item_id: s
             )
         doc_id = doc.get("id")
         text = doc.get("text")
-        if not isinstance(doc_id, str) or not doc_id:
+        if not isinstance(doc_id, str) or not doc_id.strip():
             raise GateConfigError(
                 f"dataset {path}: item #{i} '{item_id}' field "
                 f"'input.documents[{pos}].id' must be a non-empty string"
@@ -296,7 +296,7 @@ def load_dataset(path: str) -> Dataset:
     version = _require(data, "version", path, "dataset")
     task = _require(data, "task", path, "dataset")
     for _key, _value in (("name", name), ("task", task)):
-        if not isinstance(_value, str) or not _value:
+        if not isinstance(_value, str) or not _value.strip():
             raise GateConfigError(f"dataset {path}: '{_key}' must be a non-empty string")
     version = _normalize_version(version, path, "dataset")
     raw_items = _require(data, "items", path, "dataset")
@@ -308,7 +308,7 @@ def load_dataset(path: str) -> Dataset:
         if not isinstance(entry, dict):
             raise GateConfigError(f"dataset {path}: item #{i} must be an object")
         item_id = entry.get("id")
-        if not item_id or not isinstance(item_id, str):
+        if not isinstance(item_id, str) or not item_id.strip():
             raise GateConfigError(f"dataset {path}: item #{i} needs a non-empty string 'id'")
         if item_id in seen:
             raise GateConfigError(f"dataset {path}: duplicate item id '{item_id}'")
