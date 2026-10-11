@@ -184,6 +184,8 @@ def _normalize_version(value: Any, path: str, what: str) -> str:
     """Keep the released numeric-version coercion while rejecting other JSON types."""
     if isinstance(value, bool) or not isinstance(value, (str, int, float)) or value == "":
         raise GateConfigError(f"{what} {path}: 'version' must be a non-empty string or number")
+    if _is_number(value) and not _is_finite_number(value):
+        raise GateConfigError(f"{what} {path}: 'version' must be a finite number")
     return str(value)
 
 
