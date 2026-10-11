@@ -10,6 +10,7 @@ import pytest
 from llm_release_gate.errors import GateConfigError
 from llm_release_gate.loading import (
     load_dataset,
+    load_pricing,
     load_run_config,
     load_scorer_config,
     load_thresholds,
@@ -105,3 +106,47 @@ def test_duplicate_keys_rejected(tmp_path, filename, raw, loader, dup_key):
     message = str(excinfo.value)
     assert dup_key in message
     assert str(path) in message
+
+
+@pytest.mark.parametrize("bad_version", [float("inf"), float("-inf"), float("nan")])
+def test_dataset_nonfinite_version_rejected(tmp_path, bad_version):
+    doc = {"name": "a", "version": bad_version, "task": "qa", "items": [{"id": "x"}]}
+    path = _write(tmp_path / "dataset.json", doc)
+    with pytest.raises(GateConfigError) as excinfo:
+        load_dataset(path)
+    assert str(path) in str(excinfo.value)
+
+
+def test_dataset_overflow_version_rejected(tmp_path):
+    path = tmp_path / "dataset.json"
+    path.write_text(
+        '{"name": "a", "version": 1e999, "task": "qa", "items": [{"id": "x"}]}',
+        encoding="utf-8",
+    )
+    with pytest.raises(GateConfigError) as excinfo:
+        load_dataset(str(path))
+    assert str(path) in str(excinfo.value)
+
+
+@pytest.mark.parametrize("bad_version", [float("inf"), float("-inf"), float("nan")])
+def test_pricing_nonfinite_version_rejected(tmp_path, bad_version):
+    doc = {
+        "version": bad_version,
+        "models": {"m": {"input_per_mtok": 1, "output_per_mtok": 1}},
+    }
+    path = _write(tmp_path / "pricing.json", doc)
+    with pytest.raises(GateConfigError) as excinfo:
+        load_pricing(path)
+    assert str(path) in str(excinfo.value)
+
+
+def test_pricing_overflow_version_rejected(tmp_path):
+    path = tmp_path / "pricing.json"
+    path.write_text(
+        '{"version": 1e999,'
+        ' "models": {"m": {"input_per_mtok": 1, "output_per_mtok": 1}}}',
+        encoding="utf-8",
+    )
+    with pytest.raises(GateConfigError) as excinfo:
+        load_pricing(str(path))
+    assert str(path) in str(excinfo.value)
