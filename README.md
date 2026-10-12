@@ -1,5 +1,7 @@
 # llm-release-gate
 
+<p align="center"><img src="docs/assets/llm-release-gate-loop.svg" alt="llm-release-gate workflow, animated" width="100%"></p>
+
 **Stop unsafe prompt, model, retrieval, tool, or configuration changes from being merged.**
 
 [![CI](https://github.com/Chris0Jeky/llm-release-gate/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Chris0Jeky/llm-release-gate/actions/workflows/ci.yml)
