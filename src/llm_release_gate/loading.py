@@ -180,6 +180,25 @@ def _is_finite_number(value: Any) -> bool:
         return False
 
 
+def _reject_nonfinite_freeform(value: Any, where: str, key_path: str = "") -> None:
+    """Deep fail-closed check for free-form dicts (scorer options, run params).
+
+    Walks nested dicts/lists and rejects any non-finite float via
+    _is_finite_number. ``where`` already names the file plus the scorer
+    index/type or role; the raised message appends the option key path.
+    """
+    if isinstance(value, dict):
+        for key, item in value.items():
+            child = f"{key_path}.{key}" if key_path else str(key)
+            _reject_nonfinite_freeform(item, where, child)
+    elif isinstance(value, list):
+        for index, item in enumerate(value):
+            child = f"{key_path}[{index}]" if key_path else f"[{index}]"
+            _reject_nonfinite_freeform(item, where, child)
+    elif isinstance(value, float) and not _is_finite_number(value):
+        raise GateConfigError(f"{where}: option '{key_path}' must be a finite number")
+
+
 def _normalize_version(value: Any, path: str, what: str) -> str:
     """Keep the released numeric-version coercion while rejecting other JSON types."""
     if isinstance(value, bool) or not isinstance(value, (str, int, float)) or value == "":
@@ -385,11 +404,15 @@ def load_run_config(path: str, role: str) -> RunConfig:
         raise GateConfigError(
             f"{role} config {path}: prompt.system must be a string"
         )
+    params = _optional_object(data, "params", f"{role} config {path}")
+    _reject_nonfinite_freeform(params, f"{role} config {path}: 'params'")
+    provider_options = _optional_object(data, "provider_options", f"{role} config {path}")
+    _reject_nonfinite_freeform(provider_options, f"{role} config {path}: 'provider_options'")
     return RunConfig(
         name=name, provider=provider, model=model,
-        params=_optional_object(data, "params", f"{role} config {path}"),
+        params=params,
         prompt=prompt,
-        provider_options=_optional_object(data, "provider_options", f"{role} config {path}"),
+        provider_options=provider_options,
         path=path, sha256=digest, raw=data,
     )
 
@@ -421,7 +444,11 @@ def load_scorer_config(path: str) -> ScorerConfig:
         scorer_type = entry.get("type")
         if not isinstance(scorer_type, str) or not scorer_type:
             raise GateConfigError(f"scorer config {path}: scorer #{i} 'type' must be a non-empty string")
-        scorers.append({"type": scorer_type, "options": _optional_object(entry, "options", f"scorer config {path}: scorer #{i}")})
+        options = _optional_object(entry, "options", f"scorer config {path}: scorer #{i}")
+        _reject_nonfinite_freeform(
+            options, f"scorer config {path}: scorer #{i} ('{scorer_type}')"
+        )
+        scorers.append({"type": scorer_type, "options": options})
     return ScorerConfig(scorers=scorers, path=path, sha256=digest, raw=data)
 
 
