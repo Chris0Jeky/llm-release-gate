@@ -462,6 +462,16 @@ def test_build_scorers_rejects_duplicate_metric_owner():
         build_scorers(unknown)
 
 
+def test_build_scorers_rejects_unknown_type():
+    config = ScorerConfig(
+        scorers=[{"type": "typo_quality", "options": {}}],
+        path="test",
+        sha256="test",
+    )
+    with pytest.raises(GateConfigError, match="unknown scorer type"):
+        build_scorers(config)
+
+
 def test_aggregate_pass_and_violation_rates():
     quality = KeywordQualityScorer({})
     abstention = AbstentionScorer({})

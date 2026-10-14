@@ -469,3 +469,30 @@ def test_html_item_cells_for_na_error_and_abstain():
     assert '<span class="note">abstained</span>' in out  # abstained branch
 
     assert out.count('<span class="badge na">N/A</span>') == 1
+
+
+def test_markdown_escapes_pipes_and_newlines_in_metric_cells():
+    import re
+
+    note = "no pricing for model a|b\nsecond line"
+    report = _minimal_markdown_report([])
+    report["metrics"] = {
+        "cost.total_usd": {
+            "baseline": {"available": False, "value": None, "note": note},
+            "candidate": {"available": False, "value": None, "note": note},
+            "delta": None,
+        },
+    }
+    md = render_markdown(report)
+    row = next(
+        line for line in md.splitlines() if line.startswith("| cost.total_usd |")
+    )
+    # Pipe from the note is escaped so it cannot start a new table cell.
+    assert "a\\|b" in row
+    assert len(re.findall(r"(?<!\\)\|", row)) == 6
+    # Newline is folded so the metric stays on a single table row.
+    assert "<br/>" in row
+    assert "second line" in row
+    assert not any(
+        line.strip() == "second line" for line in md.splitlines()
+    )
