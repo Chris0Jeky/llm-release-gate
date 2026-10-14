@@ -31,17 +31,17 @@ def binding_module():
 
 def bind_fixture(paths, role):
     path = Path(paths[role])
-    data = json.loads(path.read_text())
+    data = json.loads(path.read_text(encoding="utf-8"))
     data["provider_options"]["request_binding"] = "sha256-v1"
-    path.write_text(json.dumps(data))
+    path.write_text(json.dumps(data), encoding="utf-8")
     dataset, config = load_dataset(paths["dataset"]), load_run_config(str(path), role)
     fixture = path.parent / config.provider_options["fixtures"]
-    raw = json.loads(fixture.read_text())
+    raw = json.loads(fixture.read_text(encoding="utf-8"))
     adapter = build_adapter(dataset.task)
     for item in dataset.items:
         entry = raw["responses"][config.model][item.id]
         entry["request_sha256"] = reference_hash(adapter.build_request(item, config))
-    fixture.write_text(json.dumps(raw))
+    fixture.write_text(json.dumps(raw), encoding="utf-8")
     return fixture
 
 
@@ -90,8 +90,8 @@ def test_stale_fixture_is_configuration_error_even_under_permissive_policy(mini_
     paths = mini_gate(thresholds={"rules": [{"metric": "errors.error_rate", "max_value": 1.0}]})
     bind_fixture(paths, "baseline")
     bind_fixture(paths, "candidate")
-    cfg = json.loads(Path(paths["candidate"]).read_text())
-    dataset = json.loads(Path(paths["dataset"]).read_text())
+    cfg = json.loads(Path(paths["candidate"]).read_text(encoding="utf-8"))
+    dataset = json.loads(Path(paths["dataset"]).read_text(encoding="utf-8"))
     if mutation in ("template", "system"):
         cfg["prompt"][mutation] += " CHANGED"
     elif mutation == "params":
@@ -102,8 +102,8 @@ def test_stale_fixture_is_configuration_error_even_under_permissive_policy(mini_
         dataset["items"][0]["input"]["question"] += " CHANGED"
     else:
         dataset["items"][0]["input"]["documents"][0]["text"] += " CHANGED"
-    Path(paths["candidate"]).write_text(json.dumps(cfg))
-    Path(paths["dataset"]).write_text(json.dumps(dataset))
+    Path(paths["candidate"]).write_text(json.dumps(cfg), encoding="utf-8")
+    Path(paths["dataset"]).write_text(json.dumps(dataset), encoding="utf-8")
     assert main(gate_argv(paths)) == 2
     err = capsys.readouterr().err
     assert "request binding" in err
@@ -115,13 +115,13 @@ def test_stale_fixture_is_configuration_error_even_under_permissive_policy(mini_
 def test_missing_invalid_or_wrong_fixture_digest_refused(mini_gate, digest, capsys):
     paths = mini_gate()
     fixture = bind_fixture(paths, "candidate")
-    data = json.loads(fixture.read_text())
+    data = json.loads(fixture.read_text(encoding="utf-8"))
     entry = data["responses"]["m-cand"]["r1"]
     if digest is None:
         del entry["request_sha256"]
     else:
         entry["request_sha256"] = digest
-    fixture.write_text(json.dumps(data))
+    fixture.write_text(json.dumps(data), encoding="utf-8")
     assert main(gate_argv(paths)) == 2
     assert "request binding" in capsys.readouterr().err
     assert not Path(paths["out"]).exists()
@@ -130,18 +130,18 @@ def test_missing_invalid_or_wrong_fixture_digest_refused(mini_gate, digest, caps
 def test_missing_bound_item_cannot_be_warned_away(mini_gate):
     paths = mini_gate(thresholds={"rules": [{"metric": "errors.error_rate", "max_value": 1.0}]})
     fixture = bind_fixture(paths, "candidate")
-    data = json.loads(fixture.read_text())
+    data = json.loads(fixture.read_text(encoding="utf-8"))
     del data["responses"]["m-cand"]["r1"]
-    fixture.write_text(json.dumps(data))
+    fixture.write_text(json.dumps(data), encoding="utf-8")
     assert main(gate_argv(paths)) == 2
 
 
 def test_error_fixture_must_be_bound_before_provider_failure(mini_gate):
     paths = mini_gate(thresholds={"rules": [{"metric": "errors.error_rate", "max_value": 1.0}]})
     fixture = bind_fixture(paths, "candidate")
-    data = json.loads(fixture.read_text())
+    data = json.loads(fixture.read_text(encoding="utf-8"))
     data["responses"]["m-cand"]["r1"] = {"error": "unbound outage"}
-    fixture.write_text(json.dumps(data))
+    fixture.write_text(json.dumps(data), encoding="utf-8")
     assert main(gate_argv(paths)) == 2
 
 
@@ -150,7 +150,7 @@ def test_valid_bound_replay_still_passes_and_discloses_mode(mini_gate):
     bind_fixture(paths, "baseline")
     bind_fixture(paths, "candidate")
     assert main(gate_argv(paths)) == 0
-    report = json.loads((Path(paths["out"]) / "report.json").read_text())
+    report = json.loads((Path(paths["out"]) / "report.json").read_text(encoding="utf-8"))
     for role in ("baseline", "candidate"):
         assert report["runs"][role]["provider"]["request_binding"] == "sha256-v1"
 
@@ -158,7 +158,7 @@ def test_valid_bound_replay_still_passes_and_discloses_mode(mini_gate):
 def test_legacy_mode_does_not_claim_binding(mini_gate):
     paths = mini_gate()
     assert main(gate_argv(paths)) == 0
-    report = json.loads((Path(paths["out"]) / "report.json").read_text())
+    report = json.loads((Path(paths["out"]) / "report.json").read_text(encoding="utf-8"))
     assert "request_binding" not in report["runs"]["candidate"]["provider"]
 
 
@@ -176,7 +176,7 @@ def test_plan_works_without_provider_or_fixture_and_has_no_raw_prompts(mini_gate
     monkeypatch.setattr(FakeProvider, "__init__", forbidden)
     out = paths["tmp"] / "planning"
     assert main(plan_args(paths, out)) == 0
-    plan = json.loads((out / "plan.json").read_text())
+    plan = json.loads((out / "plan.json").read_text(encoding="utf-8"))
     assert plan["schema_version"] == "lrg-request-plan/1"
     digest = plan.pop("plan_hash")
     assert content_hash(plan) == digest
@@ -184,7 +184,7 @@ def test_plan_works_without_provider_or_fixture_and_has_no_raw_prompts(mini_gate
     cfg, dataset = load_run_config(paths["candidate"], "config"), load_dataset(paths["dataset"])
     adapter = build_adapter(dataset.task)
     assert plan["requests"][0]["request_sha256"] == reference_hash(adapter.build_request(dataset.items[0], cfg))
-    text = (out / "plan.json").read_text()
+    text = (out / "plan.json").read_text(encoding="utf-8")
     assert "What color is the sky" not in text
     assert str(paths["tmp"]) not in text
     assert "gate" not in plan
@@ -207,9 +207,9 @@ def test_plan_limit_and_bad_template_fail_without_output(mini_gate):
     out = paths["tmp"] / "planning"
     assert main(plan_args(paths, out) + ["--max-input-bytes", "1"]) == 2
     assert not out.exists()
-    cfg = json.loads(Path(paths["candidate"]).read_text())
+    cfg = json.loads(Path(paths["candidate"]).read_text(encoding="utf-8"))
     cfg["prompt"]["template"] = "$undefined"
-    Path(paths["candidate"]).write_text(json.dumps(cfg))
+    Path(paths["candidate"]).write_text(json.dumps(cfg), encoding="utf-8")
     assert main(plan_args(paths, out)) == 2
     assert not out.exists()
 
@@ -219,9 +219,9 @@ def test_required_binding_refuses_config_downgrade(mini_gate, role, capsys):
     paths = mini_gate()
     bind_fixture(paths, "baseline")
     bind_fixture(paths, "candidate")
-    config = json.loads(Path(paths[role]).read_text())
+    config = json.loads(Path(paths[role]).read_text(encoding="utf-8"))
     del config["provider_options"]["request_binding"]
-    Path(paths[role]).write_text(json.dumps(config))
+    Path(paths[role]).write_text(json.dumps(config), encoding="utf-8")
     assert main(gate_argv(paths) + ["--require-request-binding"]) == 2
     assert "requires fake provider request_binding='sha256-v1'" in capsys.readouterr().err
     assert not Path(paths["out"]).exists()
@@ -235,7 +235,7 @@ def test_required_binding_receipt_composes_with_byte_limit(mini_gate):
     before = (Path(paths["out"]) / "report.json").read_bytes()
     assert main(gate_argv(paths) + ["--require-request-binding", "--max-input-bytes", "100000"]) == 0
     assert (Path(paths["out"]) / "report.json").read_bytes() == before
-    manifest = json.loads((Path(paths["out"]) / "manifest.json").read_text())
+    manifest = json.loads((Path(paths["out"]) / "manifest.json").read_text(encoding="utf-8"))
     assert manifest["execution_options"] == {"require_request_binding": True, "max_input_bytes": 100000}
 
 
@@ -252,9 +252,9 @@ def test_required_binding_applies_to_run(mini_gate):
 def test_bound_fixture_requires_known_version(mini_gate, version, capsys):
     paths = mini_gate()
     fixture = bind_fixture(paths, "candidate")
-    data = json.loads(fixture.read_text())
+    data = json.loads(fixture.read_text(encoding="utf-8"))
     data["version"] = version
-    fixture.write_text(json.dumps(data))
+    fixture.write_text(json.dumps(data), encoding="utf-8")
     assert main(gate_argv(paths)) == 2
     assert "request binding requires fixture version '1'" in capsys.readouterr().err
     assert not Path(paths["out"]).exists()
@@ -266,12 +266,12 @@ def test_bound_provider_errors_retain_existing_policy(mini_gate, permissive, exp
     paths = mini_gate(thresholds=rules)
     bind_fixture(paths, "baseline")
     fixture = bind_fixture(paths, "candidate")
-    data = json.loads(fixture.read_text())
+    data = json.loads(fixture.read_text(encoding="utf-8"))
     entry = data["responses"]["m-cand"]["r1"]
     data["responses"]["m-cand"]["r1"] = {"request_sha256": entry["request_sha256"], "error": "outage"}
-    fixture.write_text(json.dumps(data))
+    fixture.write_text(json.dumps(data), encoding="utf-8")
     assert main(gate_argv(paths)) == expected
-    report = json.loads((Path(paths["out"]) / "report.json").read_text())
+    report = json.loads((Path(paths["out"]) / "report.json").read_text(encoding="utf-8"))
     assert report["runs"]["candidate"]["n_errors"] == 1
 
 
@@ -281,9 +281,9 @@ def test_binding_identifies_requests_not_expectations_or_file_layout(mini_gate):
     def plan():
         return build_request_plan(load_dataset(paths["dataset"]), load_run_config(paths["candidate"], "config"))
     first = plan()
-    dataset = json.loads(Path(paths["dataset"]).read_text())
+    dataset = json.loads(Path(paths["dataset"]).read_text(encoding="utf-8"))
     dataset["items"][0]["expected"]["quality"]["must_contain"] = ["new expectation"]
-    Path(paths["dataset"]).write_text(json.dumps(dataset, indent=4))
+    Path(paths["dataset"]).write_bytes(json.dumps(dataset, indent=4).encode("utf-8"))
     second = plan()
     assert second["requests"] == first["requests"]
     assert second["plan_hash"] != first["plan_hash"]
@@ -327,7 +327,7 @@ def test_cyclic_or_surrogate_request_is_clean_configuration_error():
 
 
 def test_action_can_require_binding_independently_of_candidate_config():
-    action = (Path(__file__).resolve().parents[1] / "action.yml").read_text()
+    action = (Path(__file__).resolve().parents[1] / "action.yml").read_text(encoding="utf-8")
     assert 'IN_REQUIRE_BINDING: ${{ inputs.require-request-binding }}' in action
     assert 'true) args+=(--require-request-binding)' in action
     assert '"cli-exit=2"' in action
@@ -340,16 +340,16 @@ def test_bound_reports_disclose_assurance_limit_in_all_formats(mini_gate, roles)
         bind_fixture(paths, role)
     assert main(gate_argv(paths)) == 0
     for suffix in ("json", "md", "html"):
-        report = (Path(paths["out"]) / ("report." + suffix)).read_text()
+        report = (Path(paths["out"]) / ("report." + suffix)).read_text(encoding="utf-8")
         assert "Request-bound replay" in report
         assert "not attest model execution or producer authenticity" in report
 
 
 def test_invalid_plan_metadata_is_named_config_error_not_traceback(mini_gate, capsys):
     paths = mini_gate()
-    config = json.loads(Path(paths["candidate"]).read_text())
+    config = json.loads(Path(paths["candidate"]).read_text(encoding="utf-8"))
     config["provider"] = "\ud800"
-    Path(paths["candidate"]).write_text(json.dumps(config))
+    Path(paths["candidate"]).write_text(json.dumps(config), encoding="utf-8")
     out = paths["tmp"] / "invalid-plan"
     assert main(plan_args(paths, out)) == 2
     error = capsys.readouterr().err

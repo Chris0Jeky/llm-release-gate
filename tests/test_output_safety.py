@@ -17,9 +17,9 @@ def previous_bundle(paths):
     out = Path(paths['out'])
     before = {name: (out / name).read_bytes() for name in NAMES}
     cfg = Path(paths['candidate'])
-    data = json.loads(cfg.read_text())
+    data = json.loads(cfg.read_text(encoding="utf-8"))
     data['name'] = 'new-generation'
-    cfg.write_text(json.dumps(data))
+    cfg.write_text(json.dumps(data), encoding="utf-8")
     return out, before
 
 
@@ -32,9 +32,9 @@ def test_output_cannot_replace_an_input(mini_gate, role, capsys):
     source.write_bytes(Path(paths[role]).read_bytes())
     # Preserve resolution of fixture paths when moving a run config.
     if role in ('baseline', 'candidate'):
-        data = json.loads(source.read_text())
+        data = json.loads(source.read_text(encoding="utf-8"))
         data['provider_options']['fixtures'] = str(paths['tmp'] / data['provider_options']['fixtures'])
-        source.write_text(json.dumps(data))
+        source.write_text(json.dumps(data), encoding="utf-8")
     paths[role] = str(source)
     before = source.read_bytes()
     assert cli.main(gate_argv(paths)) == 2
@@ -51,9 +51,9 @@ def test_output_cannot_replace_transitive_fixture(mini_gate, capsys):
     source = out / 'manifest.json'
     source.write_bytes((paths['tmp'] / 'fixtures/candidate.json').read_bytes())
     cfg = Path(paths['candidate'])
-    data = json.loads(cfg.read_text())
+    data = json.loads(cfg.read_text(encoding="utf-8"))
     data['provider_options']['fixtures'] = str(source)
-    cfg.write_text(json.dumps(data))
+    cfg.write_text(json.dumps(data), encoding="utf-8")
     before = source.read_bytes()
     assert cli.main(gate_argv(paths)) == 2
     assert source.read_bytes() == before
@@ -152,9 +152,9 @@ def test_another_publisher_lock_is_not_removed(mini_gate, capsys):
     out = Path(paths['out'])
     out.mkdir()
     lock = out / '.llm-release-gate.lock'
-    lock.write_text('other writer')
+    lock.write_text('other writer', encoding="utf-8")
     assert cli.main(gate_argv(paths)) == 2
-    assert lock.read_text() == 'other writer'
+    assert lock.read_text(encoding="utf-8") == 'other writer'
     assert set(p.name for p in out.iterdir()) == {lock.name}
     assert 'lock' in capsys.readouterr().err
 
@@ -164,9 +164,9 @@ def test_publication_preserves_unrelated_files(mini_gate):
     out = Path(paths['out'])
     out.mkdir()
     unrelated = out / 'keep.txt'
-    unrelated.write_text('keep me')
+    unrelated.write_text('keep me', encoding="utf-8")
     assert cli.main(gate_argv(paths)) == 0
-    assert unrelated.read_text() == 'keep me'
+    assert unrelated.read_text(encoding="utf-8") == 'keep me'
     assert set(p.name for p in out.iterdir()) == set(NAMES) | {'keep.txt'}
 
 
@@ -201,7 +201,7 @@ def test_failed_rollback_retains_recovery_and_blocks_new_writer(mini_gate, monke
     stage, = list(out.glob('.lrg-stage-*'))
     assert (stage / 'old-0').read_bytes() == before['report.json']
     assert (out / '.llm-release-gate.lock').exists()
-    recovery = json.loads((stage / 'recovery.json').read_text())
+    recovery = json.loads((stage / 'recovery.json').read_text(encoding="utf-8"))
     assert recovery['files'][0]['destination'] == str(out / 'report.json')
     assert recovery['files'][0]['backup'] == 'old-0'
     monkeypatch.setattr(os, 'replace', real_replace)
@@ -214,13 +214,13 @@ def test_replacing_regular_hardlink_does_not_mutate_unrelated_file(mini_gate):
     out = Path(paths['out'])
     out.mkdir()
     unrelated = paths['tmp'] / 'not-an-input'
-    unrelated.write_text('unrelated bytes')
+    unrelated.write_text('unrelated bytes', encoding="utf-8")
     try:
         os.link(unrelated, out / 'report.json')
     except OSError:
         pytest.skip('hardlinks unavailable')
     assert cli.main(gate_argv(paths)) == 0
-    assert unrelated.read_text() == 'unrelated bytes'
+    assert unrelated.read_text(encoding="utf-8") == 'unrelated bytes'
 
 
 def test_input_capture_does_not_leak_across_cli_calls(mini_gate):
