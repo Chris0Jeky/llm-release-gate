@@ -9,6 +9,12 @@ from . import HEURISTIC_FOOTNOTE, fmt_delta, fmt_value, is_heuristic, verdict_wo
 _VERDICT_ICON = {"pass": "✅", "fail": "❌", "warn": "⚠️", "skipped": "⏭️"}
 
 
+def _escape_cell(text: str) -> str:
+    return (
+        text.replace("\r\n", "<br/>").replace("\n", "<br/>").replace("\r", "<br/>").replace("|", "\\|")
+    )
+
+
 def render_markdown(report: dict) -> str:
     gate = report["gate"]
     inputs = report["inputs"]
@@ -65,13 +71,14 @@ def render_markdown(report: dict) -> str:
                 cells[side] = f"{fmt_value(m)} ({m['note']})"
             else:
                 cells[side] = fmt_value(m)
-        b_txt, c_txt = cells["b"], cells["c"]
+        b_txt, c_txt = _escape_cell(cells["b"]), _escape_cell(cells["c"])
         gate_cells = [
             f"{_VERDICT_ICON.get(r['verdict'], '❓')} {verdict_word(r['verdict'])}"
             for r in rules_by_metric.get(key, [])
         ]
-        gate_cell = ", ".join(gate_cells) if gate_cells else "—"
-        lines.append(f"| {key}{mark} | {b_txt} | {c_txt} | {fmt_delta(entry)} | {gate_cell} |")
+        gate_cell = _escape_cell(", ".join(gate_cells) if gate_cells else "—")
+        delta_txt = _escape_cell(fmt_delta(entry))
+        lines.append(f"| {key}{mark} | {b_txt} | {c_txt} | {delta_txt} | {gate_cell} |")
     lines.append("")
     if heuristic_used:
         lines.append(f"† {HEURISTIC_FOOTNOTE}.")
