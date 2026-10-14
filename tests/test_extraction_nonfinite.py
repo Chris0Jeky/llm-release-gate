@@ -19,6 +19,8 @@ def _item() -> DatasetItem:
         "-Infinity",
         '{"total": NaN}',
         '```json\n{"total": Infinity}\n```',
+        "1e999",
+        '{"total": -1e999}',
     ],
 )
 def test_nonfinite_literals_are_parse_errors(text):
