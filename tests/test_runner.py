@@ -248,3 +248,16 @@ def test_null_and_list_fixture_text_are_per_item_errors(tmp_path):
         assert "non-string" in by_id[bad_id].error
     assert by_id["i3"].status == "ok"
     assert result.aggregates["errors.error_rate"]["value"] == 2 / 3
+
+
+def test_latency_partial_coverage_noted():
+    from llm_release_gate.runner import ItemRecord, _aggregate
+
+    records = [
+        ItemRecord(item_id="i1", status="ok", latency_ms=120.0),
+        ItemRecord(item_id="i2", status="ok", latency_ms=None),
+    ]
+    aggregates = _aggregate(records, scorers=[])
+    assert aggregates["latency.p50_ms"]["note"] == (
+        "latency reported for 1 of 2 answered items"
+    )
