@@ -116,6 +116,14 @@ def test_field_match_rejects_non_dict_json():
     assert result["quality.pass_rate"]["detail"] == "output is not a JSON object"
 
 
+def test_field_match_no_fields_inapplicable():
+    scorer = FieldMatchScorer({})
+    adapter = ExtractionAdapter()
+    item = DatasetItem(id="q", input={"question": "q"}, expected={})
+    result = scorer.score_item(item, adapter.parse('{"a": 1}', item))
+    assert result["quality.pass_rate"]["applicable"] is False
+
+
 # ------------------------------------------------------------- abstention
 
 def test_abstention_four_quadrants():
