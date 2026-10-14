@@ -401,6 +401,12 @@ def test_json_equal_keeps_bool_distinct_from_int_at_any_depth():
     assert r["quality.pass_rate"]["passed"] is False
 
 
+def test_json_equal_rejects_length_mismatch():
+    from llm_release_gate.scorers import json_equal
+    assert json_equal([1, 2], [1, 2, 3]) is False
+    assert json_equal([], [1]) is False
+
+
 def test_json_schema_scorer_counts_parse_failures_as_invalid():
     scorer = JsonSchemaScorer({"schema": {"type": "object"}})
     adapter = ExtractionAdapter()
