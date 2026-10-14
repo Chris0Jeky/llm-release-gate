@@ -361,6 +361,13 @@ def test_unenforceable_schemas_are_rejected_at_construction():
                                      "additionalProperties": {"type": "string"}}})
 
 
+def test_schema_definition_rejects_bad_required():
+    with pytest.raises(GateConfigError, match="required"):
+        JsonSchemaScorer({"schema": {"type": "object", "required": "vendor"}})
+    with pytest.raises(GateConfigError, match="required"):
+        JsonSchemaScorer({"schema": {"type": "object", "required": ["vendor", 3]}})
+
+
 def test_schema_definition_rejects_bad_required_and_integer_strictness():
     with pytest.raises(GateConfigError, match="required"):
         JsonSchemaScorer({"schema": {"type": "object", "required": "vendor"}})
