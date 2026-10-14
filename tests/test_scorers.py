@@ -498,3 +498,20 @@ def test_aggregate_excludes_inapplicable():
     agg = aggregate_scores(scorers, scored_items)
     assert agg["quality.pass_rate"]["denominator"] == 2
     assert agg["quality.pass_rate"]["value"] == pytest.approx(0.5)
+
+
+def test_aggregate_violation_rate_counts_violations():
+    scorer = AbstentionScorer({})
+    answerable = grounded_item(should_abstain=False)
+    answered = parse_rag("It is 42. [doc:d1]", answerable)
+    abstained = parse_rag("I don't know.", answerable)
+    scored_items = [
+        scorer.score_item(answerable, answered),
+        scorer.score_item(answerable, abstained),
+        scorer.score_item(answerable, abstained),
+    ]
+    agg = aggregate_scores([scorer], scored_items)
+    metric = agg["abstention.over_abstention_rate"]
+    assert metric["value"] == pytest.approx(2 / 3)
+    assert metric["numerator"] == 2
+    assert metric["denominator"] == 3
