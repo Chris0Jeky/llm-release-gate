@@ -28,7 +28,7 @@ def prepared(mini_gate, *, red=False):
     paths = mini_gate(thresholds={'rules': [{'metric': 'quality.pass_rate', 'min_value': 1.1}]} if red else None)
     assert main(gate_argv(paths)) == (1 if red else 0)
     out = Path(paths['out'])
-    manifest = json.loads((out / 'manifest.json').read_text())
+    manifest = json.loads((out / 'manifest.json').read_text(encoding="utf-8"))
     assert 'bundle_integrity' in manifest, 'gate must publish an integrity receipt'
     return paths, out, manifest
 
@@ -36,7 +36,7 @@ def prepared(mini_gate, *, red=False):
 def reseal(out, manifest):
     """Model an adversary able to rewrite ALL unpinned artifact declarations."""
     manifest.pop('bundle_integrity', None)
-    report = json.loads((out / 'report.json').read_text())
+    report = json.loads((out / 'report.json').read_text(encoding="utf-8"))
     receipt = {
         'schema_version': 'lrg-report-bundle/1',
         'result_hash': report['result_hash'],
@@ -104,9 +104,9 @@ def test_missing_modified_or_partial_artifact_refused(mini_gate, capsys, name, m
     elif mutation == 'append':
         # Whitespace after manifest JSON is semantically immaterial; change its metadata instead.
         if name == 'manifest.json':
-            data = json.loads(path.read_text())
+            data = json.loads(path.read_text(encoding="utf-8"))
             data['created_at'] = 'different capture'
-            path.write_text(json.dumps(data))
+            path.write_text(json.dumps(data), encoding="utf-8")
         else:
             path.write_bytes(path.read_bytes() + b' ')
     else:
@@ -131,10 +131,10 @@ def test_final_symlinks_are_not_followed(mini_gate, name):
 def test_locked_bundle_cannot_be_verified_or_unlock_itself(mini_gate):
     _, out, _ = prepared(mini_gate)
     lock = out / '.llm-release-gate.lock'
-    lock.write_text('writer or crash residue')
+    lock.write_text('writer or crash residue', encoding="utf-8")
     with pytest.raises(GateConfigError, match='lock'):
         module().verify_bundle(out)
-    assert lock.read_text() == 'writer or crash residue'
+    assert lock.read_text(encoding="utf-8") == 'writer or crash residue'
 
 
 def test_relocated_bundle_needs_no_input_files_or_execution(mini_gate, monkeypatch):
@@ -157,8 +157,8 @@ def test_relocated_bundle_needs_no_input_files_or_execution(mini_gate, monkeypat
 def test_duplicate_json_keys_are_rejected(mini_gate, document, duplicate):
     _, out, _ = prepared(mini_gate)
     path = out / document
-    raw = path.read_text()
-    path.write_text('{' + duplicate + raw[1:])
+    raw = path.read_text(encoding="utf-8")
+    path.write_text('{' + duplicate + raw[1:], encoding="utf-8")
     with pytest.raises(GateConfigError, match='duplicate'):
         module().verify_bundle(out)
 
@@ -167,8 +167,8 @@ def test_duplicate_json_keys_are_rejected(mini_gate, document, duplicate):
 def test_nonfinite_manifest_json_is_refused_without_echoing_values(mini_gate, token):
     _, out, _ = prepared(mini_gate)
     path = out / 'manifest.json'
-    raw = path.read_text()
-    path.write_text('{"SECRET":' + token + ',' + raw[1:])
+    raw = path.read_text(encoding="utf-8")
+    path.write_text('{"SECRET":' + token + ',' + raw[1:], encoding="utf-8")
     with pytest.raises(GateConfigError) as exc:
         module().verify_bundle(out)
     assert 'SECRET' not in str(exc.value)
@@ -179,7 +179,7 @@ def test_nonfinite_manifest_json_is_refused_without_echoing_values(mini_gate, to
 def test_bad_receipt_contract_is_refused(mini_gate, field, value):
     _, out, manifest = prepared(mini_gate)
     manifest['bundle_integrity'][field] = value
-    (out / 'manifest.json').write_text(json.dumps(manifest))
+    (out / 'manifest.json').write_text(json.dumps(manifest), encoding="utf-8")
     with pytest.raises(GateConfigError):
         module().verify_bundle(out)
 
@@ -190,7 +190,7 @@ def test_boolean_size_cannot_equal_integer_length(mini_gate):
     receipt['files']['report.json']['size_bytes'] = True
     receipt.pop('bundle_hash')
     receipt['bundle_hash'] = content_hash(receipt)
-    (out / 'manifest.json').write_text(json.dumps(manifest))
+    (out / 'manifest.json').write_text(json.dumps(manifest), encoding="utf-8")
     with pytest.raises(GateConfigError):
         module().verify_bundle(out)
 
@@ -212,7 +212,7 @@ def test_resealed_manifest_must_still_agree_with_report(mini_gate, field):
 def test_trusted_pin_catches_fully_resealed_report_mutation(mini_gate):
     _, out, manifest = prepared(mini_gate)
     original = manifest['result_hash']
-    report = json.loads((out / 'report.json').read_text())
+    report = json.loads((out / 'report.json').read_text(encoding="utf-8"))
     report['items'][0]['candidate']['text'] = 'forged answer'
     write_changed_report(out, report)
     manifest['result_hash'] = report['result_hash']
@@ -262,17 +262,17 @@ def test_verification_size_cap_is_enforced(mini_gate):
 def test_verification_has_no_github_output_side_effects(mini_gate, monkeypatch):
     paths, out, _ = prepared(mini_gate)
     sink = paths['tmp'] / 'github-output'
-    sink.write_text('unchanged')
+    sink.write_text('unchanged', encoding="utf-8")
     monkeypatch.setenv('GITHUB_OUTPUT', str(sink))
     monkeypatch.setenv('GITHUB_STEP_SUMMARY', str(sink))
     assert main(['verify', '--bundle', str(out)]) == 0
-    assert sink.read_text() == 'unchanged'
+    assert sink.read_text(encoding="utf-8") == 'unchanged'
 
 
 def test_legacy_manifest_is_explicitly_unsupported(mini_gate):
     _, out, manifest = prepared(mini_gate)
     manifest.pop('bundle_integrity')
-    (out / 'manifest.json').write_text(json.dumps(manifest))
+    (out / 'manifest.json').write_text(json.dumps(manifest), encoding="utf-8")
     with pytest.raises(GateConfigError, match='integrity receipt'):
         module().verify_bundle(out)
 
@@ -285,9 +285,9 @@ def test_omitted_pricing_hash_is_not_equivalent_to_explicit_unknown(mini_gate, s
     del args[i:i + 2]
     assert main(args) == 0
     out = Path(paths['out'])
-    manifest = json.loads((out / 'manifest.json').read_text())
+    manifest = json.loads((out / 'manifest.json').read_text(encoding="utf-8"))
     if side == 'report':
-        report = json.loads((out / 'report.json').read_text())
+        report = json.loads((out / 'report.json').read_text(encoding="utf-8"))
         del report['inputs']['pricing_table']['sha256']
         write_changed_report(out, report)
         manifest['result_hash'] = report['result_hash']
@@ -302,7 +302,7 @@ def test_omitted_pricing_hash_is_not_equivalent_to_explicit_unknown(mini_gate, s
     ('n_rules', True), ('n_failed', -1), ('n_warned', 100)])
 def test_resealed_header_inconsistency_is_refused(mini_gate, field, value):
     _, out, manifest = prepared(mini_gate)
-    report = json.loads((out / 'report.json').read_text())
+    report = json.loads((out / 'report.json').read_text(encoding="utf-8"))
     report['gate'][field] = value
     write_changed_report(out, report)
     manifest['result_hash'] = report['result_hash']
@@ -315,7 +315,7 @@ def test_resealed_header_inconsistency_is_refused(mini_gate, field, value):
 def test_manifest_reformatting_preserves_canonical_bundle_pin(mini_gate):
     _, out, manifest = prepared(mini_gate)
     pin = manifest['bundle_integrity']['bundle_hash']
-    (out / 'manifest.json').write_text(json.dumps(manifest, sort_keys=True, indent=4))
+    (out / 'manifest.json').write_text(json.dumps(manifest, sort_keys=True, indent=4), encoding="utf-8")
     assert module().verify_bundle(out, expected_bundle_hash=pin)['integrity'] == 'verified'
 
 
@@ -330,7 +330,7 @@ def test_changed_bundle_is_refused_at_final_snapshot_check(mini_gate, monkeypatc
             path = out / 'report.md'
             path.write_bytes(path.read_bytes() + b'changed after read')
         else:
-            (out / '.llm-release-gate.lock').write_text('writer')
+            (out / '.llm-release-gate.lock').write_text('writer', encoding="utf-8")
         return result
     monkeypatch.setattr(bundles, '_check_report_and_manifest', concurrent_writer)
     with pytest.raises(GateConfigError, match='changed|lock'):
@@ -339,8 +339,8 @@ def test_changed_bundle_is_refused_at_final_snapshot_check(mini_gate, monkeypatc
 
 def test_action_exports_bundle_pin_and_verifies_actual_outputs():
     root = Path(__file__).resolve().parents[1]
-    action = (root / 'action.yml').read_text()
-    workflow = (root / '.github/workflows/ci.yml').read_text()
+    action = (root / 'action.yml').read_text(encoding="utf-8")
+    workflow = (root / '.github/workflows/ci.yml').read_text(encoding="utf-8")
     assert 'value: ${{ steps.gate.outputs.bundle-hash }}' in action
     assert 'EXPECTED_BUNDLE_HASH: ${{ steps.bound.outputs.bundle-hash }}' in workflow
     assert '--expected-bundle-hash "$EXPECTED_BUNDLE_HASH"' in workflow

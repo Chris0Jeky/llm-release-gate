@@ -135,8 +135,8 @@ def test_force_scaffold_output_boundary_remains_restricted(tmp_path, output):
 
 
 def test_snapshot_identity_prose_matches_schema():
-    schema = json.loads((BUNDLE / "04-implementation/run-snapshot.schema.json").read_text())
-    text = (BUNDLE / "03-architecture/target-evidence-architecture.md").read_text()
+    schema = json.loads((BUNDLE / "04-implementation/run-snapshot.schema.json").read_text(encoding="utf-8"))
+    text = (BUNDLE / "03-architecture/target-evidence-architecture.md").read_text(encoding="utf-8")
     assert "snapshot_sha256" in schema["required"]
     assert '"snapshot_sha256": "sha256:..."' in text
     assert "snapshot_id" not in text

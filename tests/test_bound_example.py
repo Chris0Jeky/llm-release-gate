@@ -44,7 +44,7 @@ def test_committed_bound_example_works_via_gate(tmp_path):
 
 
 def test_ci_exercises_bound_and_downgraded_action_inputs():
-    workflow = (ROOT / ".github/workflows/ci.yml").read_text()
+    workflow = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
     assert 'require-request-binding: "true"' in workflow
     assert '${{ steps.bound.outputs.verdict }}' in workflow
     assert '${{ steps.unbound.outcome }}' in workflow
@@ -58,12 +58,12 @@ def test_ci_exercises_bound_and_downgraded_action_inputs():
 @pytest.mark.parametrize("value,accepted", [("true", True), ("false", True), ("", False),
                                            ("TRUE", False), ("$(touch injected)", False)])
 def test_action_binding_boolean_is_literal_not_shell_code(tmp_path, value, accepted):
-    action = (ROOT / "action.yml").read_text()
+    action = (ROOT / "action.yml").read_text(encoding="utf-8")
     step = action.split("    - name: Run gate\n", 1)[1]
     body = step.split("      run: |\n", 1)[1].split("\n    #", 1)[0]
     script = "\n".join(line[8:] for line in body.splitlines())
     shim = tmp_path / "python"
-    shim.write_text('#!/bin/sh\nprintf "%s\\n" "$@" > "$ARGV_OUTPUT"\n')
+    shim.write_text('#!/bin/sh\nprintf "%s\\n" "$@" > "$ARGV_OUTPUT"\n', encoding="utf-8")
     shim.chmod(0o755)
     env = dict(os.environ, PATH=str(tmp_path) + os.pathsep + os.environ.get("PATH", ""),
                IN_REQUIRE_BINDING=value, IN_MAX_INPUT_BYTES="", IN_PRICING="",
@@ -74,9 +74,9 @@ def test_action_binding_boolean_is_literal_not_shell_code(tmp_path, value, accep
                             capture_output=True, text=True, timeout=10)
     assert result.returncode == 0  # enforcement is deferred to the Action's final step
     assert not (tmp_path / "injected").exists()
-    assert (tmp_path / "outputs").read_text().strip() == ("cli-exit=0" if accepted else "cli-exit=2")
+    assert (tmp_path / "outputs").read_text(encoding="utf-8").strip() == ("cli-exit=0" if accepted else "cli-exit=2")
     if accepted:
-        args = (tmp_path / "argv").read_text().splitlines()
+        args = (tmp_path / "argv").read_text(encoding="utf-8").splitlines()
         assert ("--require-request-binding" in args) == (value == "true")
         assert args.count("file with spaces") == 6
     else:
