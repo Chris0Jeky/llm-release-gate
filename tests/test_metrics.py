@@ -22,6 +22,12 @@ def test_percentile_p50_even_count():
     assert percentile(values, 50) == 20.0
 
 
+def test_percentile_uses_ceil_rank():
+    assert percentile([10.0, 20.0, 30.0, 40.0], 50) == 20.0
+    with pytest.raises(ValueError, match="percentile of empty list"):
+        percentile([], 50)
+
+
 def test_percentile_p50_odd_count():
     values = [10.0, 20.0, 30.0, 40.0, 50.0]
     assert percentile(values, 50) == 30.0
