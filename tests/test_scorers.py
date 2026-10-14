@@ -126,6 +126,14 @@ def test_field_match_json_array_fails():
     assert result["quality.pass_rate"]["passed"] is False
 
 
+def test_field_match_no_fields_inapplicable():
+    scorer = FieldMatchScorer({})
+    adapter = ExtractionAdapter()
+    item = DatasetItem(id="q", input={"question": "q"}, expected={})
+    result = scorer.score_item(item, adapter.parse('{"a": 1}', item))
+    assert result["quality.pass_rate"]["applicable"] is False
+
+
 # ------------------------------------------------------------- abstention
 
 def test_abstention_four_quadrants():
