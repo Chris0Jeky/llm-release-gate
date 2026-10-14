@@ -48,17 +48,17 @@ def test_smoke_refuses_false_positive_evidence(tmp_path, failure):
     assert hasattr(verify_dist, "smoke_replay_features")
     def mutate(args, target, result):
         if failure == "plan-overwrite" and args[2] == "plan" and result.returncode == 2:
-            (target / "plan.json").write_text('{}')
+            (target / "plan.json").write_text('{}', encoding="utf-8")
         if failure == "plan-identity" and args[2] == "plan" and result.returncode == 0:
             path = target / "plan.json"
-            plan = json.loads(path.read_text())
+            plan = json.loads(path.read_text(encoding="utf-8"))
             plan["requests"][0]["request_sha256"] = "sha256:" + "0" * 64
-            path.write_text(json.dumps(plan))
+            path.write_text(json.dumps(plan), encoding="utf-8")
         if failure == "bound-identity" and args[2] == "gate" and result.returncode == 0:
             path = target / "report.json"
-            report = json.loads(path.read_text())
+            report = json.loads(path.read_text(encoding="utf-8"))
             report["runs"]["candidate"]["provider"].pop("request_binding", None)
-            path.write_text(json.dumps(report))
+            path.write_text(json.dumps(report), encoding="utf-8")
         if failure == "generic-refusal" and args[2] == "gate" and result.returncode == 2:
             result.stderr = "configuration error: some unrelated failure"
         if failure == "invalid-verification" and args[2] == "verify" and result.returncode == 0:

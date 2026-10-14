@@ -50,11 +50,11 @@ def test_output_values_cannot_inject_a_second_assignment(tmp_path, monkeypatch, 
 @pytest.mark.parametrize('key', ['bad\nverdict', 'bad=name', 'bad<<EOF', '', 1])
 def test_invalid_output_names_fail_before_append(tmp_path, monkeypatch, key):
     sink = tmp_path / 'outputs'
-    sink.write_text('old=value\n')
+    sink.write_text('old=value\n', encoding="utf-8")
     monkeypatch.setenv('GITHUB_OUTPUT', str(sink))
     with pytest.raises(GateConfigError):
         cli._emit_github_outputs({'safe': 'new', key: 'bad'})
-    assert sink.read_text() == 'old=value\n'
+    assert sink.read_text(encoding="utf-8") == 'old=value\n'
 
 
 @pytest.mark.parametrize('variable', ['GITHUB_OUTPUT', 'GITHUB_STEP_SUMMARY'])
@@ -95,11 +95,11 @@ def test_command_sink_alias_to_input_is_refused(mini_gate, monkeypatch, link):
 def test_command_sinks_must_not_alias_each_other(mini_gate, monkeypatch):
     paths = mini_gate()
     sink = paths['tmp'] / 'both-sinks'
-    sink.write_text('unchanged')
+    sink.write_text('unchanged', encoding="utf-8")
     for variable in ('GITHUB_OUTPUT', 'GITHUB_STEP_SUMMARY'):
         monkeypatch.setenv(variable, str(sink))
     assert cli.main(gate_argv(paths)) == 2
-    assert sink.read_text() == 'unchanged'
+    assert sink.read_text(encoding="utf-8") == 'unchanged'
     assert not Path(paths['out']).exists()
 
 
@@ -107,7 +107,7 @@ def test_command_sinks_must_not_alias_each_other(mini_gate, monkeypatch):
 @pytest.mark.parametrize('value,expected', [('0', 0), ('1', 1), ('2', 2), ('127', 2),
     ('256', 2), ('-1', 2), ('', 2), ('bad', 2), ('$(touch injected)', 2)])
 def test_enforcement_treats_status_as_data_and_fails_closed(tmp_path, value, expected):
-    action = (ROOT / 'action.yml').read_text()
+    action = (ROOT / 'action.yml').read_text(encoding="utf-8")
     body = action.split('    - name: Enforce gate verdict\n', 1)[1].split('      run: |\n', 1)[1]
     script = '\n'.join(line[8:] for line in body.splitlines())
     # Emulate runner interpolation only for the old vulnerable implementation.
@@ -119,7 +119,7 @@ def test_enforcement_treats_status_as_data_and_fails_closed(tmp_path, value, exp
 
 
 def test_action_enforcement_does_not_interpolate_status_into_script():
-    action = (ROOT / 'action.yml').read_text()
+    action = (ROOT / 'action.yml').read_text(encoding="utf-8")
     step = action.split('    - name: Enforce gate verdict\n', 1)[1]
     env, script = step.split('      run: |\n', 1)
     assert 'GATE_EXIT_CODE: ${{ steps.gate.outputs.cli-exit }}' in env
@@ -129,15 +129,15 @@ def test_action_enforcement_does_not_interpolate_status_into_script():
 @pytest.mark.parametrize('value', ['bad\x00value', '\ud800'])
 def test_unencodable_output_is_refused_without_partial_commands(tmp_path, monkeypatch, value):
     sink = tmp_path / 'outputs'
-    sink.write_text('old=value\n')
+    sink.write_text('old=value\n', encoding="utf-8")
     monkeypatch.setenv('GITHUB_OUTPUT', str(sink))
     with pytest.raises(GateConfigError):
         cli._emit_github_outputs({'safe': 'new', 'bad': value})
-    assert sink.read_text() == 'old=value\n'
+    assert sink.read_text(encoding="utf-8") == 'old=value\n'
 
 
 def test_hosted_workflow_checks_literal_output_after_runner_parsing():
-    workflow = (ROOT / '.github/workflows/ci.yml').read_text()
+    workflow = (ROOT / '.github/workflows/ci.yml').read_text(encoding="utf-8")
     assert 'id: literal_outputs' in workflow
     assert 'LITERAL_PAYLOAD: ${{ steps.literal_outputs.outputs.literal }}' in workflow
     assert 'INJECTED_OUTPUT: ${{ steps.literal_outputs.outputs.injected }}' in workflow

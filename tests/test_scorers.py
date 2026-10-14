@@ -498,6 +498,18 @@ def test_aggregate_pass_and_violation_rates():
     assert agg["abstention.false_answer_rate"]["denominator"] == 2
 
 
+def test_aggregate_excludes_inapplicable():
+    scorers = [KeywordQualityScorer({})]
+    scored_items = [
+        {"quality.pass_rate": {"applicable": True, "passed": True, "detail": None}},
+        {"quality.pass_rate": {"applicable": True, "passed": False, "detail": "miss"}},
+        {"quality.pass_rate": {"applicable": False, "passed": None, "detail": None}},
+    ]
+    agg = aggregate_scores(scorers, scored_items)
+    assert agg["quality.pass_rate"]["denominator"] == 2
+    assert agg["quality.pass_rate"]["value"] == pytest.approx(0.5)
+
+
 def test_aggregate_violation_rate_counts_violations():
     scorer = AbstentionScorer({})
     answerable = grounded_item(should_abstain=False)
