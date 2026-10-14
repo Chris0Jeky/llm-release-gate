@@ -8,7 +8,7 @@ import pytest
 from llm_release_gate.cli import main
 from llm_release_gate.errors import GateConfigError
 from llm_release_gate.hashing import file_sha256
-from llm_release_gate.loading import load_dataset
+from llm_release_gate.loading import load_dataset, load_run_config, load_scorer_config
 
 from conftest import GOOD_RESPONSE, gate_argv, write_json
 
@@ -210,3 +210,47 @@ def test_valid_quality_terms_still_load(tmp_path):
     assert dataset.items[0].expected == {
         "quality": {"must_contain": ["blue"], "must_not_contain": ["red"]}
     }
+
+
+def test_scorer_options_nan_rejected(tmp_path):
+    path = write_json(tmp_path / "scorers.json", {
+        "scorers": [{"type": "field_match", "options": {"threshold": float("nan")}}],
+    })
+    with pytest.raises(GateConfigError, match=r"finite"):
+        load_scorer_config(path)
+
+
+def test_scorer_options_infinity_rejected(tmp_path):
+    path = write_json(tmp_path / "scorers.json", {
+        "scorers": [{"type": "field_match",
+                     "options": {"nested": {"values": [1.0, float("inf")]}}}],
+    })
+    with pytest.raises(GateConfigError, match=r"finite"):
+        load_scorer_config(path)
+
+
+def test_run_params_nan_rejected(tmp_path):
+    path = write_json(tmp_path / "candidate.json", {
+        "name": "candidate", "provider": "fake", "model": "m-cand",
+        "prompt": {"system": "answer", "template": "$question"},
+        "params": {"temperature": float("nan")},
+    })
+    with pytest.raises(GateConfigError, match=r"finite"):
+        load_run_config(path, "candidate")
+
+
+def test_finite_options_still_load(tmp_path):
+    scorers_path = write_json(tmp_path / "scorers.json", {
+        "scorers": [{"type": "field_match",
+                     "options": {"threshold": 0.5, "nested": {"values": [1.0, 2]}}}],
+    })
+    scorers = load_scorer_config(scorers_path)
+    assert scorers.scorers[0]["options"]["threshold"] == 0.5
+    run_path = write_json(tmp_path / "candidate.json", {
+        "name": "candidate", "provider": "fake", "model": "m-cand",
+        "prompt": {"system": "answer", "template": "$question"},
+        "params": {"temperature": 0.5},
+        "provider_options": {"limit": 10},
+    })
+    run = load_run_config(run_path, "candidate")
+    assert run.params["temperature"] == 0.5
