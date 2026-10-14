@@ -333,6 +333,14 @@ def test_schema_valid_object_passes():
     assert validate_against_schema(value, SCHEMA) == []
 
 
+def test_schema_allows_extras_by_default():
+    errors = validate_against_schema(
+        {"vendor": "A", "total": 1, "extra": 1},
+        {"type": "object", "properties": {"vendor": {"type": "string"}, "total": {"type": "number"}}},
+    )
+    assert errors == []
+
+
 def test_json_schema_scorer_requires_schema_option():
     with pytest.raises(GateConfigError, match="options.schema"):
         JsonSchemaScorer({})
