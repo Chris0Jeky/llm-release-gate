@@ -26,23 +26,23 @@ def setup(mini_gate, *, original_red=False, rules=None):
     assert cli.main(gate_argv(paths)) == (1 if original_red else 0)
     out = Path(paths['out'])
     policy = paths['tmp'] / 'consumer-policy.json'
-    policy.write_text(json.dumps({'rules': rules or [{'metric': 'quality.pass_rate', 'min_value': 1}]}))
-    manifest = json.loads((out / 'manifest.json').read_text())
+    policy.write_text(json.dumps({'rules': rules or [{'metric': 'quality.pass_rate', 'min_value': 1}]}), encoding="utf-8")
+    manifest = json.loads((out / 'manifest.json').read_text(encoding="utf-8"))
     return paths, out, policy, manifest
 
 
 def reseal(out, change):
-    report = json.loads((out / 'report.json').read_text())
+    report = json.loads((out / 'report.json').read_text(encoding="utf-8"))
     change(report)
     report.pop('result_hash')
     report['result_hash'] = content_hash(report)
-    (out / 'report.json').write_text(json.dumps(report))
-    manifest = json.loads((out / 'manifest.json').read_text())
+    (out / 'report.json').write_text(json.dumps(report), encoding="utf-8")
+    manifest = json.loads((out / 'manifest.json').read_text(encoding="utf-8"))
     manifest.pop('bundle_integrity')
     manifest['result_hash'] = report['result_hash']
     manifest['bundle_integrity'] = bundles.build_bundle_receipt(manifest,
         {name: (out / name).read_bytes() for name in bundles.REPORT_FILES})
-    (out / 'manifest.json').write_text(json.dumps(manifest))
+    (out / 'manifest.json').write_text(json.dumps(manifest), encoding="utf-8")
 
 
 @pytest.mark.parametrize('original_red,minimum,new_verdict', [(False, 1, 'pass'),
@@ -74,13 +74,13 @@ def test_cli_emits_json_and_new_policy_exit_without_github_side_effects(mini_gat
     auditor()
     capsys.readouterr()
     sink = out.parent / 'sink'
-    sink.write_text('unchanged')
+    sink.write_text('unchanged', encoding="utf-8")
     for name in ('GITHUB_OUTPUT', 'GITHUB_STEP_SUMMARY'):
         monkeypatch.setenv(name, str(sink))
     assert cli.main(['audit', '--bundle', str(out), '--thresholds', str(policy), '--json']) == expected
     proof = json.loads(capsys.readouterr().out)
     assert proof['policy_verdict'] == ('pass' if expected == 0 else 'fail')
-    assert sink.read_text() == 'unchanged'
+    assert sink.read_text(encoding="utf-8") == 'unchanged'
 
 
 @pytest.mark.parametrize('name', ['expected_result_hash', 'expected_bundle_hash', 'expected_policy_hash'])
@@ -104,7 +104,7 @@ def test_all_pins_are_checked_and_recorded(mini_gate):
     '{"rules":[{"metric":"quality.pass_rate","typo":0}]}', '[]'])
 def test_ambiguous_or_malformed_policy_is_refused(mini_gate, raw):
     _, out, policy, _ = setup(mini_gate)
-    policy.write_text(raw)
+    policy.write_text(raw, encoding="utf-8")
     with pytest.raises(GateConfigError):
         auditor().audit_bundle(out, policy)
 
@@ -158,7 +158,7 @@ def test_audit_uses_verified_snapshot_without_reopening_report(mini_gate, monkey
     original = mod._verified_bundle_snapshot
     def mutate_after_snapshot(*args, **kwargs):
         verified = original(*args, **kwargs)
-        (out / 'report.json').write_text('not JSON; must not reopen')
+        (out / 'report.json').write_text('not JSON; must not reopen', encoding="utf-8")
         return verified
     monkeypatch.setattr(mod, '_verified_bundle_snapshot', mutate_after_snapshot)
     assert mod.audit_bundle(out, policy)['policy_verdict'] == 'fail'
@@ -218,13 +218,13 @@ def test_duplicate_valid_rules_key_is_rejected_not_last_wins(mini_gate):
     _, out, policy, _ = setup(mini_gate)
     strict = '{"metric":"quality.pass_rate","min_value":1.1}'
     relaxed = '{"metric":"quality.pass_rate","min_value":0}'
-    policy.write_text('{"rules":[' + strict + '],"rules":[' + relaxed + ']}')
+    policy.write_text('{"rules":[' + strict + '],"rules":[' + relaxed + ']}', encoding="utf-8")
     with pytest.raises(GateConfigError, match='duplicate'):
         auditor().audit_bundle(out, policy)
 
 
 def test_action_qualifies_pinned_consumer_policy_audit():
-    workflow = (Path(__file__).resolve().parents[1] / '.github/workflows/ci.yml').read_text()
+    workflow = (Path(__file__).resolve().parents[1] / '.github/workflows/ci.yml').read_text(encoding="utf-8")
     assert 'Audit the pinned bundle under an independent consumer policy' in workflow
     assert 'llm_release_gate audit --bundle out/action-bound' in workflow
     assert '--expected-policy-hash "$EXPECTED_POLICY_HASH"' in workflow

@@ -42,11 +42,11 @@ def test_missing_marker_field_is_blocked_by_real_extraction_gate(mini_gate, cand
         thresholds={'rules': [{'metric': 'quality.pass_rate', 'max_drop_abs': 0}]})
     for role in ('baseline', 'candidate'):
         path = Path(paths[role])
-        cfg = json.loads(path.read_text())
+        cfg = json.loads(path.read_text(encoding="utf-8"))
         cfg['prompt']['template'] = '$text'
-        path.write_text(json.dumps(cfg))
+        path.write_text(json.dumps(cfg), encoding="utf-8")
     assert main(gate_argv(paths)) == 1
-    report = json.loads((Path(paths['out']) / 'report.json').read_text())
+    report = json.loads((Path(paths['out']) / 'report.json').read_text(encoding="utf-8"))
     assert report['metrics']['quality.pass_rate']['baseline']['value'] == 1
     assert report['metrics']['quality.pass_rate']['candidate']['value'] == 0
     assert report['runs']['candidate']['n_errors'] == 0  # scoring failure, not provider failure

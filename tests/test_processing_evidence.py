@@ -50,7 +50,7 @@ def failing_gate(mini_gate, monkeypatch, stage, *, error=RuntimeError, all_items
 def test_processing_failure_retains_measurements_and_cannot_hide_cost(mini_gate, monkeypatch, stage):
     paths = failing_gate(mini_gate, monkeypatch, stage)
     assert cli.main(gate_argv(paths)) == 1  # previously passes the cost ceiling
-    report = json.loads((Path(paths['out']) / 'report.json').read_text())
+    report = json.loads((Path(paths['out']) / 'report.json').read_text(encoding="utf-8"))
     failed = report['items'][1]['candidate']
     assert failed['status'] == 'error' and failed['error_stage'] == stage
     assert failed['prompt_tokens'] == 1_000_000
@@ -80,7 +80,7 @@ def test_failure_attribution_survives_all_renderers(mini_gate, monkeypatch, stag
     paths = failing_gate(mini_gate, monkeypatch, stage)
     cli.main(gate_argv(paths))
     for extension in ('json', 'md', 'html'):
-        text = (Path(paths['out']) / ('report.' + extension)).read_text()
+        text = (Path(paths['out']) / ('report.' + extension)).read_text(encoding="utf-8")
         assert 'item-processing errors' in text
         assert 'candidate run had 1/3 provider errors' not in text
     # A correctly serialized error bundle is still internally verifiable.
@@ -91,7 +91,7 @@ def test_failure_attribution_survives_all_renderers(mini_gate, monkeypatch, stag
 def test_provider_error_from_processing_keeps_correct_stage(mini_gate, monkeypatch, stage):
     paths = failing_gate(mini_gate, monkeypatch, stage, error=ProviderError)
     assert cli.main(gate_argv(paths)) == 1
-    failed = json.loads((Path(paths['out']) / 'report.json').read_text())['items'][1]['candidate']
+    failed = json.loads((Path(paths['out']) / 'report.json').read_text(encoding="utf-8"))['items'][1]['candidate']
     assert failed['error_stage'] == stage
     assert failed['prompt_tokens'] == 1_000_000
 
@@ -106,7 +106,7 @@ def test_configuration_failure_still_aborts_without_new_evidence(mini_gate, monk
 def test_all_post_response_errors_retain_records_not_fabricated_aggregates(mini_gate, monkeypatch):
     paths = failing_gate(mini_gate, monkeypatch, 'parse', all_items=True)
     assert cli.main(gate_argv(paths)) == 1
-    report = json.loads((Path(paths['out']) / 'report.json').read_text())
+    report = json.loads((Path(paths['out']) / 'report.json').read_text(encoding="utf-8"))
     assert all(item['candidate']['prompt_tokens'] is not None for item in report['items'])
     assert report['runs']['candidate']['n_processing_errors'] == 3
     assert report['metrics']['cost.total_usd']['candidate']['available'] is False
@@ -121,7 +121,7 @@ def test_pre_request_error_does_not_inherit_previous_response(mini_gate, monkeyp
         return original(self, item, config)
     monkeypatch.setattr(RagAdapter, 'build_request', fail)
     assert cli.main(gate_argv(paths)) == 1
-    report = json.loads((Path(paths['out']) / 'report.json').read_text())
+    report = json.loads((Path(paths['out']) / 'report.json').read_text(encoding="utf-8"))
     failed = report['items'][1]['candidate']
     assert failed['error_stage'] == 'request'
     assert failed['prompt_tokens'] is None and failed['text'] is None
@@ -133,7 +133,7 @@ def test_pre_request_error_does_not_inherit_previous_response(mini_gate, monkeyp
 def test_unavailable_policy_is_not_silently_overridden(mini_gate, monkeypatch, policy, expected):
     paths = failing_gate(mini_gate, monkeypatch, 'parse', on_unavailable=policy)
     assert cli.main(gate_argv(paths)) == expected
-    report = json.loads((Path(paths['out']) / 'report.json').read_text())
+    report = json.loads((Path(paths['out']) / 'report.json').read_text(encoding="utf-8"))
     assert report['metrics']['cost.total_usd']['candidate']['available'] is False
 
 
@@ -157,7 +157,7 @@ def test_huge_usage_cost_overflow_cannot_hide_behind_tolerated_errors(mini_gate)
         {'metric': 'cost.total_usd', 'max_value': 0.1},
     ]})
     assert cli.main(gate_argv(paths)) == 1
-    report = json.loads((Path(paths['out']) / 'report.json').read_text())
+    report = json.loads((Path(paths['out']) / 'report.json').read_text(encoding="utf-8"))
     failed = report['items'][1]['candidate']
     assert failed['error_stage'] == 'pricing'
     assert failed['prompt_tokens'] == 10**400
@@ -169,7 +169,7 @@ def test_ordinary_provider_failure_keeps_existing_identity_and_sample_scope(mini
     responses['r2'] = {'error': 'simulated outage'}
     paths = mini_gate(candidate_responses=responses)
     assert cli.main(gate_argv(paths)) == 1
-    report = json.loads((Path(paths['out']) / 'report.json').read_text())
+    report = json.loads((Path(paths['out']) / 'report.json').read_text(encoding="utf-8"))
     assert 'n_processing_errors' not in report['runs']['candidate']
     assert 'error_stage' not in report['items'][1]['candidate']
     assert report['metrics']['tokens.total']['candidate']['value'] == 225

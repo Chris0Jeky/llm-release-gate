@@ -23,7 +23,7 @@ def test_bounded_gate_preserves_existing_report_bytes(mini_gate):
     before = (Path(paths["out"]) / "report.json").read_bytes()
     assert main(gate_argv(paths) + ["--max-input-bytes", "100000"]) == 0
     assert (Path(paths["out"]) / "report.json").read_bytes() == before
-    manifest = json.loads((Path(paths["out"]) / "manifest.json").read_text())
+    manifest = json.loads((Path(paths["out"]) / "manifest.json").read_text(encoding="utf-8"))
     assert manifest["execution_options"]["max_input_bytes"] == 100000
 
 
@@ -57,7 +57,7 @@ def test_limit_counts_utf8_source_bytes_not_characters(tmp_path, extra, allowed)
 def test_cap_is_scoped_and_restored_after_nested_failure(tmp_path):
     assert hasattr(loading, "input_byte_limit")
     path = tmp_path / "data.json"
-    path.write_text('{"key":42}')
+    path.write_text('{"key":42}', encoding="utf-8")
     with loading.input_byte_limit(100):
         with pytest.raises(GateConfigError):
             with loading.input_byte_limit(1):
@@ -103,16 +103,16 @@ def test_cli_rejects_invalid_byte_caps(mini_gate, value, capsys):
 def test_run_error_policy_is_opt_in_and_preserves_diagnostics(mini_gate, n_errors, capsys):
     paths = mini_gate()
     fixture = paths["tmp"] / "fixtures/candidate.json"
-    data = json.loads(fixture.read_text())
+    data = json.loads(fixture.read_text(encoding="utf-8"))
     for i in range(n_errors):
         data["responses"]["m-cand"][f"r{i+1}"] = {"error": "test failure"}
-    fixture.write_text(json.dumps(data))
+    fixture.write_text(json.dumps(data), encoding="utf-8")
     assert main(run_args(paths)) == 0
     output = Path(paths["out"]) / "run.json"
     before = output.read_bytes()
     assert main(run_args(paths) + ["--fail-on-errors"]) == (2 if n_errors else 0)
     assert output.read_bytes() == before
-    assert json.loads(output.read_text())["run"]["n_errors"] == n_errors
+    assert json.loads(output.read_text(encoding="utf-8"))["run"]["n_errors"] == n_errors
     err = capsys.readouterr().err
     assert "Traceback" not in err
     if n_errors:
@@ -131,7 +131,7 @@ def test_limited_run_includes_transitive_fixture(mini_gate, capsys):
 def test_limit_isolated_between_contexts(tmp_path):
     from contextvars import Context
     path = tmp_path / "data.json"
-    path.write_text('{"key":42}')
+    path.write_text('{"key":42}', encoding="utf-8")
     independent = Context()
     with loading.input_byte_limit(1):
         assert independent.run(loading._load_json_file, str(path), "test")[0] == {"key": 42}
@@ -140,14 +140,14 @@ def test_limit_isolated_between_contexts(tmp_path):
 
 
 def test_action_passes_size_limit_as_quoted_argument():
-    action = (Path(__file__).resolve().parents[1] / "action.yml").read_text()
+    action = (Path(__file__).resolve().parents[1] / "action.yml").read_text(encoding="utf-8")
     assert "IN_MAX_INPUT_BYTES: ${{ inputs.max-input-bytes }}" in action
     assert 'args+=(--max-input-bytes "$IN_MAX_INPUT_BYTES")' in action
     assert "--max-input-bytes ${{" not in action
 
 
 def test_action_self_test_covers_bounded_acceptance_and_refusal():
-    workflow = (Path(__file__).resolve().parents[1] / ".github/workflows/ci.yml").read_text()
+    workflow = (Path(__file__).resolve().parents[1] / ".github/workflows/ci.yml").read_text(encoding="utf-8")
     assert 'max-input-bytes: "1048576"' in workflow
     assert 'max-input-bytes: "1"' in workflow
     assert '${{ steps.oversize.outcome }}' in workflow
