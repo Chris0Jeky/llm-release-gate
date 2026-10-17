@@ -1,6 +1,8 @@
 """Writer, pagination and concurrent-run controls, without network access."""
 
 import json
+from pathlib import Path
+import subprocess
 from types import SimpleNamespace
 
 import pytest
@@ -92,6 +94,52 @@ def test_authenticated_custom_writer_and_other_invocations_are_isolated(tmp_path
     assert api.comments[-2]['body'] == isolated
 
 
+def test_matrix_legs_publish_separate_verdicts_and_retire_only_their_own(tmp_path):
+    reporter, api = load_reporter(), FakeGithub()
+    first = dict(invocation(tmp_path), REPORT_MATRIX='{"os":"ubuntu-latest"}')
+    reporter.publish(first, api)
+    failed_report = tmp_path / 'failed.md'
+    failed_report.write_text('## llm-release-gate: **FAIL**\n', encoding='utf-8')
+    second = dict(first, REPORT_MATRIX='{"os":"windows-latest"}',
+                  REPORT_MD=str(failed_report), GATE_EXIT_CODE='1')
+    reporter.publish(second, api)
+    reporter.publish(first, api)
+    reporter.publish(second, api)
+    assert len(api.comments) == 2
+    assert '**PASS**' in api.comments[0]['body']
+    assert '**FAIL**' in api.comments[1]['body']
+    second_body = api.comments[1]['body']
+    reporter.publish(dict(first, GITHUB_RUN_NUMBER='2', GITHUB_RUN_ID='1002'), api)
+    assert len(api.comments) == 3
+    assert '**PASS**' not in api.comments[0]['body']
+    assert api.comments[1]['body'] == second_body
+    action = (Path(__file__).resolve().parents[1] / 'action.yml').read_text(encoding='utf-8')
+    assert 'REPORT_MATRIX: ${{ toJSON(matrix) }}' in action
+
+
+def test_app_token_user_lookup_failure_owns_only_marked_bot_comments(tmp_path):
+    reporter, api = load_reporter(), FakeGithub()
+    api.writer = 'release-app[bot]'
+    api.user_error = subprocess.CalledProcessError(1, ['gh', 'api', 'user'], stderr='HTTP 403')
+    old = api.add(reporter.MARKER + '\n\nold PASS', login=api.writer)
+    other_app = api.add(reporter.MARKER + '\n\nother app PASS', login='other-app[bot]')
+    human = api.add(reporter.MARKER + '\n\nhuman discussion', login='participant')
+    human['user']['type'] = 'Bot'  # Bot type alone is insufficient.
+    spoof = api.add(reporter.MARKER + '\n\nspoofed discussion', login='spoof[bot]')
+    spoof['user']['type'] = 'User'  # The login suffix alone is insufficient.
+    unmarked = api.add('unmarked bot discussion', login=api.writer)
+    untouched = [human, spoof, unmarked]
+    before = [comment['body'] for comment in untouched]
+    env = dict(invocation(tmp_path), DEFAULT_TOKEN='false')
+    reporter.publish(env, api)
+    reporter.publish(env, api)
+    assert len(api.comments) == 6
+    assert '**PASS**' in api.comments[-1]['body']
+    assert 'old PASS' not in old['body']
+    assert 'other app PASS' not in other_app['body']
+    assert [comment['body'] for comment in untouched] == before
+
+
 def test_api_transport_collects_pages_and_quotes_body(monkeypatch):
     reporter = load_reporter()
     calls = []
@@ -116,6 +164,27 @@ def test_comment_ids_must_be_positive_integers_before_building_endpoints(tmp_pat
     reporter.publish(invocation(tmp_path), api)
     assert invalid['body'].endswith('invalid ID')
     assert not any(call[1] == 'PATCH' for call in api.calls)
+
+
+def test_comments_with_null_user_are_skipped(tmp_path):
+    reporter, api = load_reporter(), FakeGithub()
+    invalid = api.add(reporter.MARKER + '\n\nunknown author')
+    invalid['user'] = None
+    reporter.publish(invocation(tmp_path), api)
+    assert len(api.comments) == 2
+    assert invalid['body'].endswith('unknown author')
+    assert '**PASS**' in api.comments[-1]['body']
+
+
+@pytest.mark.parametrize('metadata', ['{broken', '[]'])
+def test_malformed_owned_comment_identity_is_skipped(tmp_path, metadata):
+    reporter, api = load_reporter(), FakeGithub()
+    body = reporter.MARKER + '\n' + reporter.IDENTITY + metadata + ' -->\n\nold PASS'
+    invalid = api.add(body)
+    reporter.publish(invocation(tmp_path), api)
+    assert len(api.comments) == 2
+    assert invalid['body'] == body
+    assert '**PASS**' in api.comments[-1]['body']
 
 
 def test_comment_delivery_failure_is_nonfatal_and_content_free(monkeypatch, capsys):

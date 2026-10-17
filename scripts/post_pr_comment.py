@@ -49,23 +49,35 @@ def publish(env, api=github_api):
         raise ValueError('invalid PR identity')
     if not re.fullmatch(r'[0-9a-f]{40,64}', head):
         raise ValueError('invalid head')
-    scope = hashlib.sha256(env['REPORT_SCOPE'].encode()).hexdigest()
+    scope = hashlib.sha256(
+        f"{env['REPORT_SCOPE']}:{env.get('REPORT_MATRIX', '')}".encode()).hexdigest()
     generation = (int(env['GITHUB_RUN_NUMBER']), int(env['GITHUB_RUN_ATTEMPT']))
     if min(generation) < 1 or not env['GITHUB_RUN_ID'].isdecimal():
         raise ValueError('invalid run identity')
     identity = dict(scope=scope, head=head, run=generation[0], attempt=generation[1])
-    writer = ('github-actions[bot]' if env.get('DEFAULT_TOKEN') == 'true'
-              else api('user')['login'])
+    writer = 'github-actions[bot]'
+    if env.get('DEFAULT_TOKEN') != 'true':
+        try:
+            writer = api('user')['login']
+        except (OSError, subprocess.SubprocessError):
+            writer = None
     endpoint = f'repos/{repo}/issues/{pr}/comments'
     pages = api(endpoint + '?per_page=100', paginate=True)
     owned = []
     for comment in (comment for page in pages for comment in page):
         body = comment.get('body') or ''
-        if (comment.get('user', {}).get('login') != writer or
+        user = comment.get('user') or {}
+        login = user.get('login') or ''
+        owned_writer = (login == writer if writer is not None else
+                        user.get('type') == 'Bot' and login.endswith('[bot]'))
+        if (not owned_writer or
                 not (body == MARKER or body.startswith(MARKER + '\n')) or
                 type(comment.get('id')) is not int or comment['id'] < 1):
             continue
-        previous = comment_identity(body)
+        try:
+            previous = comment_identity(body)
+        except ValueError:
+            continue
         if previous is not None and previous['scope'] != scope:
             continue
         if previous is not None and (previous['run'], previous['attempt']) > generation:

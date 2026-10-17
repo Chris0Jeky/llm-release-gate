@@ -20,15 +20,19 @@ class FakeGithub:
         self.calls = []
         self.before_post = None
         self.writer = 'github-actions[bot]'
+        self.user_error = None
 
     def add(self, body, login='github-actions[bot]'):
-        comment = {'id': len(self.comments) + 1, 'body': body, 'user': {'login': login}}
+        comment = {'id': len(self.comments) + 1, 'body': body,
+                   'user': {'login': login, 'type': 'Bot' if login.endswith('[bot]') else 'User'}}
         self.comments.append(comment)
         return comment
 
     def __call__(self, endpoint, *, method='GET', data=None, paginate=False):
         self.calls.append((endpoint, method, data, paginate))
         if endpoint == 'user':
+            if self.user_error is not None:
+                raise self.user_error
             return {'login': self.writer}
         if endpoint == 'repos/owner/repo/pulls/7':
             return {'head': {'sha': self.head}}

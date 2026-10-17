@@ -144,6 +144,7 @@ runs:
         GATE_EXIT_CODE: ${{ steps.gate.outputs.cli-exit }}
         DEFAULT_TOKEN: ${{ inputs.github-token == github.token }}
         REPORT_SCOPE: ${{ github.workflow_ref }}:${{ github.job }}:${{ github.action }}
+        REPORT_MATRIX: ${{ toJSON(matrix) }}
       run: |
         if ! python "$GITHUB_ACTION_PATH/scripts/post_pr_comment.py"; then
           echo "::warning::llm-release-gate could not post the PR comment (does the workflow grant 'pull-requests: write'?). The verdict is unaffected; see the job summary."
