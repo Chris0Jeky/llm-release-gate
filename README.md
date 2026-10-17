@@ -151,6 +151,19 @@ llm-release-gate gate \
 
 Dataset and config names, and model ids, are non-empty strings. `"123"` is valid. `123` is not. Details and the fixture shape are in [docs/architecture.md](docs/architecture.md).
 
+JSON input files, including fake-provider fixtures, reject duplicate object keys
+as configuration errors (exit 2).
+
+Each `rag` or `assistant` item's documents must have unique IDs. Repeated IDs
+are configuration errors (exit 2), including when using the adapters directly.
+
+The `json_schema` scorer rejects an explicit `"type": null` as a configuration
+error (exit 2), including in nested schemas. Omit `type` for an unconstrained
+schema, or use `"type": "null"` to accept only JSON null.
+
+Extraction replies containing `NaN`, `Infinity`, `-Infinity` or overflowing
+numbers such as `1e999` are parse errors and fail schema validity checks.
+
 ### Metrics
 
 | Metric | Owner | Direction |

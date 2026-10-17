@@ -19,7 +19,7 @@ grounding material.
 
 Fail-closed documents contract: ``input.documents`` stays optional (absent
 renders as ""), but when present it must be a list of ``{"id", "text"}``
-objects with a non-empty string id and string text. A malformed entry raises
+objects with unique non-empty string ids and string text. A malformed entry raises
 GateConfigError naming the item id, mirroring TaskAdapter.required_input, so
 the gate exits 2 instead of escaping as KeyError/TypeError or silently running
 a garbage prompt. Per-item continuation stays reserved for provider runtime
@@ -33,8 +33,7 @@ from __future__ import annotations
 
 import re
 
-from ..errors import GateConfigError
-from ..loading import DatasetItem
+from ..loading import DatasetItem, _validate_grounded_documents
 from . import ParsedOutput, TaskAdapter, register_adapter, require_prompt_str
 
 CITATION_PATTERN = re.compile(r"\[doc:([^\]\s]+)\]")
@@ -45,34 +44,13 @@ ABSTENTION_PATTERN = re.compile(
 
 
 def _render_documents(item: DatasetItem, task: str) -> str:
+    _validate_grounded_documents(item.input, f"dataset item '{item.id}': task '{task}'")
     docs = item.input.get("documents", [])
-    if not isinstance(docs, list):
-        raise GateConfigError(
-            f"dataset item '{item.id}': task '{task}' requires "
-            f"input.documents as a list of objects with string 'id' and 'text'"
-        )
-    for pos, doc in enumerate(docs):
-        if not isinstance(doc, dict):
-            raise GateConfigError(
-                f"dataset item '{item.id}': task '{task}' requires "
-                f"input.documents[{pos}] as an object with string 'id' and 'text'"
-            )
-        doc_id = doc.get("id")
-        text = doc.get("text")
-        if not isinstance(doc_id, str) or not doc_id:
-            raise GateConfigError(
-                f"dataset item '{item.id}': task '{task}' requires "
-                f"input.documents[{pos}].id as a non-empty string"
-            )
-        if not isinstance(text, str):
-            raise GateConfigError(
-                f"dataset item '{item.id}': task '{task}' requires "
-                f"input.documents[{pos}].text as a string"
-            )
     return "\n\n".join(f"[doc:{d['id']}]\n{d['text']}" for d in docs)
 
 
-def _parse_grounded(text: str) -> ParsedOutput:
+def _parse_grounded(text: str, item: DatasetItem, task: str) -> ParsedOutput:
+    _validate_grounded_documents(item.input, f"dataset item '{item.id}': task '{task}'")
     citations = CITATION_PATTERN.findall(text)
     abstained = bool(ABSTENTION_PATTERN.search(text)) and not citations
     return ParsedOutput(text=text, citations=citations, abstained=abstained)
@@ -90,7 +68,7 @@ class RagAdapter(TaskAdapter):
         }
 
     def parse(self, text: str, item: DatasetItem) -> ParsedOutput:
-        return _parse_grounded(text)
+        return _parse_grounded(text, item, self.name)
 
 
 class AssistantAdapter(TaskAdapter):
@@ -105,7 +83,7 @@ class AssistantAdapter(TaskAdapter):
         }
 
     def parse(self, text: str, item: DatasetItem) -> ParsedOutput:
-        return _parse_grounded(text)
+        return _parse_grounded(text, item, self.name)
 
 
 register_adapter("rag", RagAdapter)

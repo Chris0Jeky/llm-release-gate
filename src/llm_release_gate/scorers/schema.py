@@ -48,7 +48,7 @@ def validate_schema_definition(schema, path: str = "$") -> None:
             f"use a custom scorer for richer schemas (docs/extending.md)"
         )
     stype = schema.get("type")
-    if stype is not None and (not isinstance(stype, str) or stype not in _TYPES):
+    if "type" in schema and (not isinstance(stype, str) or stype not in _TYPES):
         raise GateConfigError(
             f"json_schema scorer: unsupported type {stype!r} at {path} "
             f"(union types are not supported; allowed: {sorted(_TYPES)})"
@@ -78,8 +78,8 @@ def validate_against_schema(value, schema: dict, path: str = "$") -> list[str]:
     """Return a list of human-readable violations; empty list means valid."""
     errors: list[str] = []
     stype = schema.get("type")
-    if stype is not None:
-        expected = _TYPES.get(stype)
+    if "type" in schema:
+        expected = _TYPES.get(stype) if isinstance(stype, str) else None
         if expected is None:
             raise GateConfigError(f"json_schema scorer: unsupported type '{stype}' at {path}")
         # bool is an int subclass in Python; keep JSON semantics strict.
