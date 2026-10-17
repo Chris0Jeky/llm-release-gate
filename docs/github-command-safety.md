@@ -50,3 +50,20 @@ output. It retains the Action's actual pinned-bundle verification.
 
 References: [GitHub workflow commands](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-commands)
 and [GitHub script injection guidance](https://docs.github.com/en/actions/concepts/security/script-injections).
+
+## Diagnostic and public-report text
+
+On unreleased main, CLI diagnostics encode CR/LF and `::` in evaluator-controlled
+text, paths and chained exceptions. Threshold labels and notes use JSON quoting.
+JSON printed by `audit` and `verify` uses Unicode escapes for adjacent colons,
+preserving parsed values. Structured report files retain the complete original data.
+The Action self-test includes newline-bearing pricing versions and model names;
+it checks the actual gate stream forwarded to runner logs as well as the fail-closed
+outcome and unchanged JSON fields. Local subprocess tests cover the encoded streams;
+only hosted CI exercises the runner's command parser.
+
+Public Markdown encodes dynamic delimiters, folds CR/LF into line breaks and
+neutralizes mentions. The tests cover identity labels, threshold messages, metric
+keys, available/unavailable notes and notices. JSON values and the gate verdict
+are unaffected. PR-comment lookup/publication tests use an offline API fake;
+they do not prove hosted permissions or live comment delivery.

@@ -123,6 +123,77 @@ jobs:
           require-request-binding: "true"
           comment: "false"
 
+      - name: Prepare adversarial pricing and model diagnostics
+        run: |
+          python - <<'PYCODE'
+          import json, shutil
+          from pathlib import Path
+          root = Path('out/action-log-inputs')
+          shutil.copytree('examples/rag-support-bot', root)
+          payload = 'v1\n::warning::injected diagnostic\r\n::add-mask::LRG_MASK_SENTINEL'
+          for side in ('baseline', 'candidate'):
+              path = root / f'{side}.json'
+              config = json.loads(path.read_text(encoding='utf-8'))
+              fixtures = root / config['provider_options']['fixtures']
+              replay = json.loads(fixtures.read_text(encoding='utf-8'))
+              replay['responses'] = {payload: replay['responses'][config['model']]}
+              config['model'] = payload
+              path.write_text(json.dumps(config))
+              fixtures.write_text(json.dumps(replay))
+          (root / 'pricing.json').write_text(json.dumps({'version': payload, 'currency': 'USD',
+              'models': {'other': {'input_per_mtok': 0, 'output_per_mtok': 0}}}))
+          (root / 'thresholds.json').write_text(json.dumps({'rules': [
+              {'metric': 'cost.total_usd', 'max_value': 1}]}))
+          # Tee the actual composite gate's encoded process stream to the runner
+          # and a file, retaining the CLI status for the Action's enforcement step.
+          import os
+          Path(os.environ['RUNNER_TEMP'], 'capture-gate.sh').write_text('''python() {
+            if [ "$1" = "-m" ] && [ "$2" = "llm_release_gate" ] && [ "$3" = "gate" ]; then
+              command python "$@" 2>&1 | tee "$RUNNER_TEMP/gate-diagnostics.log"
+              return "${PIPESTATUS[0]}"
+            fi
+            command python "$@"
+          }
+          ''', newline='\n')
+          PYCODE
+
+      - name: Gate workflow-command text as inert diagnostic data
+        id: log_safety
+        continue-on-error: true
+        uses: ./
+        env:
+          BASH_ENV: ${{ runner.temp }}/capture-gate.sh
+        with:
+          dataset: out/action-log-inputs/dataset.json
+          baseline: out/action-log-inputs/baseline.json
+          candidate: out/action-log-inputs/candidate.json
+          scorers: out/action-log-inputs/scorers.json
+          thresholds: out/action-log-inputs/thresholds.json
+          pricing: out/action-log-inputs/pricing.json
+          out: out/action-log-safety
+          comment: "false"
+
+      - name: Assert runner log data is inert and structured evidence is complete
+        env:
+          LOG_OUTCOME: ${{ steps.log_safety.outcome }}
+          LOG_VERDICT: ${{ steps.log_safety.outputs.verdict }}
+        run: |
+          python - <<'PYCODE'
+          import json, os
+          from pathlib import Path
+          assert os.environ['LOG_OUTCOME'] == 'failure'
+          assert os.environ['LOG_VERDICT'] == 'fail'
+          log = Path(os.environ['RUNNER_TEMP'], 'gate-diagnostics.log').read_text(encoding='utf-8')
+          assert '::warning::' not in log and '::add-mask::' not in log
+          assert r'\n' in log and 'LRG_MASK_SENTINEL' in log
+          report = json.loads(Path('out/action-log-safety/report.json').read_text(encoding='utf-8'))
+          payload = 'v1\n::warning::injected diagnostic\r\n::add-mask::LRG_MASK_SENTINEL'
+          assert report['inputs']['pricing_table']['version'] == payload
+          assert report['inputs']['candidate_config']['model'] == payload
+          assert payload in report['rules'][0]['message']
+          assert report['gate']['verdict'] == 'fail'
+          PYCODE
+
       - name: Emit adversarial strings as literal outputs
         id: literal_outputs
         run: |
