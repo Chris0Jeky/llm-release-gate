@@ -164,6 +164,25 @@ def test_audit_uses_verified_snapshot_without_reopening_report(mini_gate, monkey
     assert mod.audit_bundle(out, policy)['policy_verdict'] == 'fail'
 
 
+@pytest.mark.parametrize('missing', ['record', 'count', 'applicability'])
+def test_comparative_audit_requires_valid_item_evidence(mini_gate, missing):
+    _, out, policy, _ = setup(mini_gate, rules=[
+        {'metric': 'quality.pass_rate', 'max_drop_abs': 0},
+    ])
+
+    def corrupt(report):
+        if missing == 'record':
+            report['items'][0]['baseline'] = {}
+        elif missing == 'count':
+            report['runs']['baseline'].pop('n_items')
+        else:
+            report['items'][0]['baseline']['scores']['quality.pass_rate']['applicable'] = 'false'
+
+    reseal(out, corrupt)
+    with pytest.raises(GateConfigError, match='comparative audit|comparison of'):
+        auditor().audit_bundle(out, policy)
+
+
 @pytest.mark.parametrize('target', ['policy', 'artifact'])
 def test_audit_limits_all_sources(mini_gate, target):
     _, out, policy, _ = setup(mini_gate)

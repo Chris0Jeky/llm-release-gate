@@ -111,7 +111,7 @@ def test_baseline_provider_error_notice_is_reported_everywhere(mini_gate):
     degraded["r2"] = {"error": "baseline upstream timeout"}
     paths = mini_gate(baseline_responses=degraded)
 
-    assert main(gate_argv(paths)) == 0
+    assert main(gate_argv(paths)) == 1  # relative rules cannot compare unlike cohorts
     report = json.loads(open(f"{paths['out']}/report.json", encoding="utf-8").read())
     notice = (
         "baseline run had 1/3 provider errors; baseline aggregates cover only the answered items"

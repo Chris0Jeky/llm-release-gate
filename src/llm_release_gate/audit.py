@@ -16,11 +16,12 @@ from .bundles import (
     _read_artifact, _verified_bundle_snapshot,
 )
 from .errors import GateConfigError
-from .gate import evaluate_thresholds
+from .gate import _NEEDS_BASELINE, _comparison_issue, evaluate_thresholds
 from .hashing import content_hash
 from .loading import ThresholdRule, Thresholds, _CONSTRAINT_KEYS, input_byte_limit
 from .metrics import HIGHER, LOWER
 from .policy_validation import require_number, validate_rule
+from .runner import ItemRecord
 
 _METRIC_FIELDS = ('value', 'available', 'unit', 'direction', 'numerator',
                   'denominator', 'n', 'kind', 'note')
@@ -124,12 +125,32 @@ def audit_bundle(
         expected_bundle_hash=expected_bundle_hash, max_input_bytes=max_input_bytes,
     )
     baseline, candidate = _aggregate_views(report)
-    rules = evaluate_thresholds(policy, baseline, candidate)
+    comparative = {rule.metric for rule in policy.rules if _NEEDS_BASELINE & rule.constraints.keys()}
+    comparison_issues = {}
+    if comparative:
+        try:
+            records = {side: [ItemRecord(**item[side]) for item in report['items']]
+                       for side in ('baseline', 'candidate')}
+        except (KeyError, TypeError, ValueError) as exc:
+            raise GateConfigError('comparative audit requires valid stored item records') from exc
+        for side, entries in records.items():
+            expected_n = report['runs'][side].get('n_items')
+            if (type(expected_n) is not int or len(entries) != expected_n
+                    or any(not isinstance(r.item_id, str) or not r.item_id
+                           or r.status not in ('ok', 'error') or not isinstance(r.scores, dict)
+                           for r in entries)
+                    or len({r.item_id for r in entries}) != len(entries)):
+                raise GateConfigError(f'comparative audit has invalid {side} item coverage')
+        for key in sorted(comparative & baseline.keys()):
+            issue = _comparison_issue(key, records['baseline'], records['candidate'])
+            if issue:
+                comparison_issues[key] = issue
+    rules = evaluate_thresholds(policy, baseline, candidate, comparison_issues)
     failed = sum(rule['verdict'] == 'fail' for rule in rules)
     result = {
         'schema_version': 'lrg-policy-audit/1',
         'tool': {'name': TOOL_NAME, 'version': __version__},
-        'evaluation_version': '1',
+        'evaluation_version': '2',
         'basis': 'stored_aggregates',
         'integrity': proof['integrity'],
         'recorded_gate_verdict': proof['gate_verdict'],
