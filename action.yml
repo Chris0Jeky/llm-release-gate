@@ -128,37 +128,26 @@ runs:
         echo "cli-exit=$code" >> "$GITHUB_OUTPUT"
         exit 0
 
-    # Finds this action's own previous comment via a marker (never touches other
-    # bots' comments) and updates it, else creates one. Comment delivery failure
-    # (e.g. missing `pull-requests: write`) is a warning, not a failed check —
+    # Bind reports to their writer, head and invocation; retire older verdicts.
+    # Comment delivery failure (e.g. missing `pull-requests: write`) is a warning —
     # the verdict must come from the gate, and the enforce step must still run.
     - name: Comment on pull request
       if: >-
         inputs.comment == 'true' &&
-        (github.event_name == 'pull_request' || github.event_name == 'pull_request_target') &&
-        steps.gate.outputs.report-md != ''
+        (github.event_name == 'pull_request' || github.event_name == 'pull_request_target')
       shell: bash
       env:
         GH_TOKEN: ${{ inputs.github-token }}
         REPORT_MD: ${{ steps.gate.outputs.report-md }}
         PR_NUMBER: ${{ github.event.pull_request.number }}
-        REPO: ${{ github.repository }}
+        PR_HEAD: ${{ github.event.pull_request.head.sha }}
+        GATE_EXIT_CODE: ${{ steps.gate.outputs.cli-exit }}
+        DEFAULT_TOKEN: ${{ inputs.github-token == github.token }}
+        REPORT_SCOPE: ${{ github.workflow_ref }}:${{ github.job }}:${{ github.action }}
       run: |
-        set +e
-        marker="<!-- llm-release-gate-report -->"
-        body_file="$(mktemp)"
-        printf '%s\n\n' "$marker" | cat - "$REPORT_MD" > "$body_file"
-        comment_id=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" --paginate \
-          --jq "[.[] | select(.body | startswith(\"$marker\"))][0].id" 2>/dev/null)
-        if [ -n "$comment_id" ] && [ "$comment_id" != "null" ]; then
-          gh api -X PATCH "repos/$REPO/issues/comments/$comment_id" -F body=@"$body_file" >/dev/null
-        else
-          gh api -X POST "repos/$REPO/issues/$PR_NUMBER/comments" -F body=@"$body_file" >/dev/null
-        fi
-        if [ $? -ne 0 ]; then
+        if ! python "$GITHUB_ACTION_PATH/scripts/post_pr_comment.py"; then
           echo "::warning::llm-release-gate could not post the PR comment (does the workflow grant 'pull-requests: write'?). The verdict is unaffected; see the job summary."
         fi
-        exit 0
 
     - name: Enforce gate verdict
       shell: bash
