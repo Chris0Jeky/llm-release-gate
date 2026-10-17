@@ -117,9 +117,9 @@ Measured on this tree, 2026-10-12, Python 3.12.3. The process exits 1 and prints
 ```
 llm-release-gate: gate FAIL
   rules: 7 evaluated, 3 failed, 0 warned
-  [FAIL] quality.pass_rate: drop 0.375 vs allowed 0.1
-  [FAIL] abstention.false_answer_rate: candidate 1 vs allowed maximum 0
-  [FAIL] citations.valid_rate: drop 0.3 vs allowed 0.05
+  [FAIL] "quality.pass_rate": "drop 0.375 vs allowed 0.1"
+  [FAIL] "abstention.false_answer_rate": "candidate 1 vs allowed maximum 0"
+  [FAIL] "citations.valid_rate": "drop 0.3 vs allowed 0.05"
   result hash: sha256:432ccdf9bdb263f642d5607528f4b80cfe79bd15d0603fd543fa46ab78bd7b05
 ```
 
@@ -210,7 +210,7 @@ steps:
       comment: "true"                    # posts or updates the PR comment
 ```
 
-The composite action calls `actions/setup-python@v6`, then `pip install` of the action directory. setup-python v6 runs on Node 24 and asks for GitHub Actions Runner **2.327.1 or newer** ([setup-python v6 README](https://github.com/actions/setup-python/blob/v6/README.md)). Paths are passed through `env:`, not interpolated into the `run:` script. The comment step looks up this action's own marker, `<!-- llm-release-gate-report -->`, and does not edit other comments. This repo's `action-self-test` job runs the Action with `comment: "false"` on the green, red, oversize, bound, and unbound cases. A live pull-request comment post is not what that job proves.
+The composite action calls `actions/setup-python@v6`, then `pip install` of the action directory. setup-python v6 runs on Node 24 and asks for GitHub Actions Runner **2.327.1 or newer** ([setup-python v6 README](https://github.com/actions/setup-python/blob/v6/README.md)). Paths are passed through `env:`, not interpolated into the `run:` script. On unreleased main, the comment publisher checks the writer and all discussion pages, then binds each report to its head SHA, workflow invocation and run attempt. New runs retire older owned verdicts; evaluation errors publish a content-free "unable to evaluate" summary and workflow link. A delayed run cannot replace a newer run's verdict. Comment delivery remains nonfatal. This repo's `action-self-test` job runs the Action with `comment: "false"` on the green, red, oversize, bound, unbound, and adversarial-diagnostic cases. A live pull-request comment post is not what that job proves.
 
 **v0.2.0 licence and identifiers.** Current source is GPL-3.0-only. Immutable v0.1.2 and earlier MIT releases keep the rights already granted. Pin those tags if you need MIT. See [CHANGELOG.md](CHANGELOG.md), [RELICENSING.md](RELICENSING.md), and [LICENSES/MIT.txt](LICENSES/MIT.txt).
 
