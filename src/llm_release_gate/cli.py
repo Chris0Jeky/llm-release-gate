@@ -43,6 +43,17 @@ EXIT_GATE_FAIL = 1
 EXIT_ERROR = 2
 
 
+def _log(text: str, *, file=None) -> None:
+    # Runner commands are parsed from both streams, even inside exception text.
+    print(text.replace("\r", "\\r").replace("\n", "\\n").replace("::", r"\x3a\x3a"), file=file)
+
+
+class _ArgumentParser(argparse.ArgumentParser):
+    def _print_message(self, message, file=None):
+        if message:
+            super()._print_message(message.replace("::", r"\x3a\x3a"), file)
+
+
 def _write(path: str, content: str) -> None:
     publish_documents({path: content})
 
@@ -126,12 +137,12 @@ def _cmd_gate(args: argparse.Namespace) -> int:
     )
     for rule in report["rules"]:
         if rule["verdict"] in ("fail", "warn"):
-            print(f"  [{rule['verdict'].upper()}] {rule['metric']}: {rule['message']}")
+            _log(f"  [{rule['verdict'].upper()}] {json.dumps(rule['metric'])}: {json.dumps(rule['message'], ensure_ascii=False)}")
     for notice in report["gate"]["notices"]:
-        print(f"  note: {notice}")
+        _log(f"  note: {json.dumps(notice, ensure_ascii=False)}")
     print(f"  result hash: {report['result_hash']}")
     print(f"  bundle hash: {manifest['bundle_integrity']['bundle_hash']}")
-    print(f"  reports: {files['report_json']}, {files['report_md']}, {files['report_html']}")
+    _log(f"  reports: {files['report_json']}, {files['report_md']}, {files['report_html']}")
 
     _emit_github_summary(markdown, files.values())
     _emit_github_outputs({
@@ -166,10 +177,10 @@ def _cmd_run(args: argparse.Namespace) -> int:
     }
     out_path = os.path.join(args.out, "run.json")
     _write(out_path, json.dumps(payload, indent=2, ensure_ascii=False) + "\n")
-    print(f"{TOOL_NAME}: ran '{cfg.name}' on {result.n_items} items "
+    _log(f"{TOOL_NAME}: ran '{cfg.name}' on {result.n_items} items "
           f"({result.n_ok} ok, {result.n_errors} errors) -> {out_path}")
     if args.fail_on_errors and result.n_errors:
-        print(f"{TOOL_NAME}: --fail-on-errors: {result.n_errors} item(s) failed; "
+        _log(f"{TOOL_NAME}: --fail-on-errors: {result.n_errors} item(s) failed; "
               f"diagnostics retained in {out_path}", file=sys.stderr)
         return EXIT_ERROR
     return EXIT_PASS
@@ -192,7 +203,7 @@ def _cmd_plan(args: argparse.Namespace) -> int:
         raise GateConfigError(f"plan output could not be created: {out_path} ({exc})") from exc
     print(f"{TOOL_NAME}: planned {len(plan['requests'])} requests; no provider calls")
     print(f"  plan hash: {plan['plan_hash']}")
-    print(f"  plan: {out_path}")
+    _log(f"  plan: {out_path}")
     return EXIT_PASS
 
 
@@ -203,7 +214,7 @@ def _cmd_verify(args: argparse.Namespace) -> int:
                           expected_bundle_hash=args.expected_bundle_hash,
                           max_input_bytes=args.max_input_bytes)
     if args.json_output:
-        print(json.dumps(proof, indent=2, ensure_ascii=False, allow_nan=False))
+        print(json.dumps(proof, indent=2, ensure_ascii=False, allow_nan=False).replace("::", r"\u003a\u003a"))
     else:
         print(f"{TOOL_NAME}: bundle integrity VERIFIED")
         print(f"  recorded gate verdict: {proof['gate_verdict'].upper()} (not re-evaluated)")
@@ -222,14 +233,14 @@ def _cmd_audit(args: argparse.Namespace) -> int:
         expected_policy_hash=args.expected_policy_hash,
         max_input_bytes=args.max_input_bytes)
     if args.json_output:
-        print(json.dumps(receipt, indent=2, ensure_ascii=False, allow_nan=False))
+        print(json.dumps(receipt, indent=2, ensure_ascii=False, allow_nan=False).replace("::", r"\u003a\u003a"))
     else:
         print(f"{TOOL_NAME}: consumer policy {receipt['policy_verdict'].upper()}")
         print(f"  recorded gate verdict: {receipt['recorded_gate_verdict'].upper()}")
         print(f"  rules: {receipt['n_rules']}, failed: {receipt['n_failed']}, warned: {receipt['n_warned']}")
         for rule in receipt['rules']:
             if rule['verdict'] in ('fail', 'warn'):
-                print(f"  [{rule['verdict'].upper()}] {json.dumps(rule['metric'], ensure_ascii=False)}: "
+                _log(f"  [{rule['verdict'].upper()}] {json.dumps(rule['metric'], ensure_ascii=False)}: "
                       f"{json.dumps(rule['message'], ensure_ascii=False)}")
         print(f"  result hash: {receipt['result_hash']}")
         print(f"  bundle hash: {receipt['bundle_hash']}")
@@ -243,7 +254,7 @@ def _cmd_hash(args: argparse.Namespace) -> int:
     for path in args.files:
         if not os.path.isfile(path):
             raise GateConfigError(f"file not found: {path}")
-        print(f"{file_sha256(path)}  {path}")
+        _log(f"{file_sha256(path)}  {path}")
     return EXIT_PASS
 
 
@@ -259,7 +270,7 @@ def _positive_bytes(value: str) -> int:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
+    parser = _ArgumentParser(
         prog=TOOL_NAME,
         description="Block unsafe LLM app changes: compare a candidate config "
                     "against the baseline over a golden dataset and fail on regression.",
@@ -338,10 +349,11 @@ def main(argv: list[str] | None = None) -> int:
         with capture_input_sources(), input_byte_limit(getattr(args, "max_input_bytes", None)):
             return args.func(args)
     except GateConfigError as exc:
-        print(f"{TOOL_NAME}: configuration error: {exc}", file=sys.stderr)
+        _log(f"{TOOL_NAME}: configuration error: {exc}", file=sys.stderr)
         return EXIT_ERROR
     except Exception:  # never let a crash masquerade as a gate verdict
-        traceback.print_exc()
+        for line in traceback.format_exc().splitlines():
+            _log(line, file=sys.stderr)
         print(f"{TOOL_NAME}: internal error (see traceback above)", file=sys.stderr)
         return EXIT_ERROR
 
