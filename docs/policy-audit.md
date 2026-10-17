@@ -78,6 +78,15 @@ and consistent rate values/counts. Both sides must use matching units/directions
 and compatible available-value kinds. Unavailable values remain explicit nulls.
 Arbitrary extension payloads are not copied into the audit's metric views.
 
+Evaluation version 2 requires matching successful/applicable item IDs for
+relative rules. Latency comparisons also require measurements for every
+answered item on both sides. The auditor checks the stored item records in
+the verified snapshot; it does not rerun models or scorers. Incomplete or
+unequal cohorts make comparative checks unavailable (fail by default), with
+missing item IDs and both denominators. Candidate-only floors/ceilings keep
+their original scope. Malformed or missing item evidence is a configuration
+error (exit 2).
+
 The shared evaluator now also rejects malformed direct-API rules, non-boolean
 availability flags, boolean/non-finite numeric values and non-representable
 arithmetic observations. Previously, direct callers could receive a pass or a raw

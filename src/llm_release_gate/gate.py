@@ -31,7 +31,7 @@ from .hashing import content_hash
 from .loading import (
     Dataset, PricingTable, RunConfig, ScorerConfig, ThresholdRule, Thresholds,
 )
-from .runner import RunResult
+from .runner import ItemRecord, RunResult
 from .requests import BINDING_SCHEME
 from .policy_validation import require_number, validate_rule
 
@@ -128,7 +128,10 @@ def _aggregate_value(metric: dict, rule_metric: str, side: str):
     return require_number(value, f"aggregate for '{rule_metric}' on {side}")
 
 
-def _evaluate_rule(rule: ThresholdRule, baseline_m: dict, candidate_m: dict, implicit: bool) -> dict:
+def _evaluate_rule(
+    rule: ThresholdRule, baseline_m: dict, candidate_m: dict, implicit: bool,
+    comparison_issue: str | None = None,
+) -> dict:
     checks = []
     verdict = "pass"
     any_evaluated = False
@@ -143,6 +146,8 @@ def _evaluate_rule(rule: ThresholdRule, baseline_m: dict, candidate_m: dict, imp
             missing.append(f"candidate: {candidate_m.get('note') or 'unavailable'}")
         if needs_baseline and not baseline_m.get("available"):
             missing.append(f"baseline: {baseline_m.get('note') or 'unavailable'}")
+        if needs_baseline and comparison_issue:
+            missing.append(comparison_issue)
         if missing:
             checks.append({
                 "constraint": name,
@@ -200,7 +205,8 @@ def _evaluate_rule(rule: ThresholdRule, baseline_m: dict, candidate_m: dict, imp
 
 
 def evaluate_thresholds(
-    thresholds: Thresholds, baseline_aggs: dict, candidate_aggs: dict
+    thresholds: Thresholds, baseline_aggs: dict, candidate_aggs: dict,
+    comparison_issues: dict[str, str] | None = None,
 ) -> list[dict]:
     known = set(baseline_aggs) | set(candidate_aggs)
     rules = list(thresholds.rules)
@@ -231,7 +237,10 @@ def evaluate_thresholds(
             )
         _reject_direction_mismatch(rule, candidate_aggs.get(rule.metric))
         verdicts.append(
-            _evaluate_rule(rule, baseline_aggs.get(rule.metric), candidate_aggs.get(rule.metric), implicit)
+            _evaluate_rule(
+                rule, baseline_aggs.get(rule.metric), candidate_aggs.get(rule.metric), implicit,
+                (comparison_issues or {}).get(rule.metric),
+            )
         )
     return verdicts
 
@@ -281,6 +290,44 @@ def _delta(baseline_m: dict, candidate_m: dict) -> dict | None:
     return {"abs": abs_delta, "pct": pct}
 
 
+def _comparison_issue(
+    key: str, baseline: list[ItemRecord], candidate: list[ItemRecord],
+) -> str | None:
+    cohorts = []
+    incomplete_latency = False
+    for records in (baseline, candidate):
+        ids = set()
+        for record in records:
+            if key == "errors.error_rate":
+                ids.add(record.item_id)
+            elif record.status == "ok":
+                if key.startswith("latency."):
+                    measured = record.latency_ms is not None
+                    incomplete_latency |= not measured
+                elif key == "tokens.total":
+                    measured = record.prompt_tokens is not None and record.completion_tokens is not None
+                elif key == "cost.total_usd":
+                    measured = record.cost_usd is not None
+                else:
+                    score = record.scores.get(key)
+                    if not isinstance(score, dict) or type(score.get("applicable")) is not bool:
+                        raise GateConfigError(
+                            f"item '{record.item_id}': comparison of '{key}' requires a boolean applicable score"
+                        )
+                    measured = score["applicable"]
+                if measured:
+                    ids.add(record.item_id)
+        cohorts.append(ids)
+    if cohorts[0] == cohorts[1] and not incomplete_latency:
+        return None
+    all_ids = {r.item_id for records in (baseline, candidate) for r in records}
+    coverage = "; ".join(
+        f"{side} n={len(ids)}/{len(records)}, missing item IDs={sorted(all_ids - ids)}"
+        for side, records, ids in zip(("baseline", "candidate"), (baseline, candidate), cohorts)
+    )
+    return f"incomparable item cohorts or incomplete latency coverage: {coverage}"
+
+
 def build_report(
     dataset: Dataset,
     baseline_run: RunResult,
@@ -293,8 +340,14 @@ def build_report(
     """Assemble the full comparison report. Deliberately timestamp- and path-free
     so its content hash is stable for identical inputs (reproducibility contract);
     paths and wall-clock live in the manifest."""
+    metric_keys = sorted(set(baseline_run.aggregates) | set(candidate_run.aggregates))
+    comparison_issues = {}
+    for key in metric_keys:
+        issue = _comparison_issue(key, baseline_run.records, candidate_run.records)
+        if issue:
+            comparison_issues[key] = issue
     rule_verdicts = evaluate_thresholds(
-        thresholds, baseline_run.aggregates, candidate_run.aggregates
+        thresholds, baseline_run.aggregates, candidate_run.aggregates, comparison_issues
     )
     n_failed = sum(1 for r in rule_verdicts if r["verdict"] == "fail")
     n_warned = sum(1 for r in rule_verdicts if r["verdict"] == "warn")
@@ -318,14 +371,16 @@ def build_report(
             f"candidate run had {candidate_run.n_errors}/{candidate_run.n_items} {candidate_error_label}"
         )
 
-    metric_keys = sorted(set(baseline_run.aggregates) | set(candidate_run.aggregates))
     metrics = {}
     for key in metric_keys:
         b = baseline_run.aggregates.get(key)
         c = candidate_run.aggregates.get(key)
         if b is None or c is None:  # only possible with asymmetric custom scoring
             continue
-        metrics[key] = {"baseline": b, "candidate": c, "delta": _delta(b, c)}
+        metrics[key] = {
+            "baseline": b, "candidate": c,
+            "delta": None if key in comparison_issues else _delta(b, c),
+        }
 
     by_id_baseline = {r.item_id: r for r in baseline_run.records}
     by_id_candidate = {r.item_id: r for r in candidate_run.records}

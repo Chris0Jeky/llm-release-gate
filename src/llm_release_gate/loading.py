@@ -230,6 +230,11 @@ def _validate_expected(expected: dict, path: str, i: int, item_id: str) -> None:
                         f"dataset {path}: item #{i} '{item_id}' field "
                         f"'expected.quality.{sub}' must be a list of non-empty strings"
                     )
+        if not any(quality.get(sub) for sub in ("must_contain", "must_not_contain")):
+            raise GateConfigError(
+                f"dataset {path}: item #{i} '{item_id}' field 'expected.quality' "
+                "must contain at least one keyword assertion; omit 'quality' to opt out"
+            )
     if "must_cite" in expected:
         value = expected["must_cite"]
         if not isinstance(value, list) or any(not isinstance(elt, str) for elt in value):
@@ -565,6 +570,11 @@ def load_pricing(path: str) -> PricingTable:
         raise GateConfigError(f"pricing table {path}: 'currency' must be a non-empty string")
     else:
         currency = data["currency"]
+    if currency != "USD":
+        raise GateConfigError(
+            f"pricing table {path}: 'currency' must be exactly 'USD'; "
+            "cost.total_usd does not support currency conversion"
+        )
     models = _require(data, "models", path, "pricing table")
     if not isinstance(models, dict):
         raise GateConfigError(f"pricing table {path}: 'models' must be an object")

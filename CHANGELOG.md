@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+- Refuse relative metric comparisons over different successful/applicable item
+  cohorts or incomplete latency coverage: checks become unavailable (fail by
+  default), naming missing item IDs and both denominators. Suppress misleading
+  deltas; candidate-only floors/ceilings retain their scope. Stored-bundle
+  comparative audits enforce the same guard. (#108)
+
+- Validate each scorer's declared per-item results before merging/aggregation;
+  omitted, undeclared or malformed scores and system-metric ownership refuse
+  the run with a configuration error (exit 2). (#105)
+
+- Reject non-USD pricing tables (exit 2) before evaluating USD cost policy;
+  an omitted currency still defaults to USD. (#106)
+
+- Reject present `expected.quality` blocks without keyword assertions (exit 2);
+  omit `quality` to opt out. Empty or blank keywords remain invalid. (#113)
+
 - Reject an explicit JSON Schema `"type": null` as a configuration error (exit 2),
   including nested schemas. Omitted `type` stays unconstrained; `"type": "null"`
   still accepts only JSON null.
