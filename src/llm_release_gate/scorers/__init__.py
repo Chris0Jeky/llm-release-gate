@@ -67,6 +67,37 @@ class Scorer(ABC):
 
 _REGISTRY: dict[str, Callable[[dict], Scorer]] = {}
 
+_SYSTEM_METRICS = {
+    "errors.error_rate", "tokens.total", "cost.total_usd",
+    "latency.p50_ms", "latency.p95_ms", "latency.mean_ms",
+}
+
+
+def validate_item_scores(scorer: Scorer, scores: object) -> dict:
+    where = f"scorer '{scorer.name}'"
+    if not isinstance(scores, dict) or scores.keys() != scorer.metrics.keys():
+        raise GateConfigError(
+            f"{where}: item scores must contain exactly the declared metrics "
+            f"{list(scorer.metrics)}; got {list(scores) if isinstance(scores, dict) else type(scores).__name__}"
+        )
+    for key, result in scores.items():
+        if (not isinstance(result, dict)
+                or not {"applicable", "passed"} <= result.keys()
+                or result.keys() - {"applicable", "passed", "detail"}):
+            raise GateConfigError(
+                f"{where}: '{key}' must be an item result with applicable, passed and optional detail"
+            )
+        if type(result["applicable"]) is not bool:
+            raise GateConfigError(f"{where}: '{key}' applicable must be boolean")
+        if ((result["applicable"] and type(result["passed"]) is not bool)
+                or (not result["applicable"] and result["passed"] is not None)):
+            raise GateConfigError(
+                f"{where}: '{key}' passed must be boolean when applicable, otherwise None"
+            )
+        if result.get("detail") is not None and not isinstance(result["detail"], str):
+            raise GateConfigError(f"{where}: '{key}' detail must be a string or None")
+    return scores
+
 
 def register_scorer(name: str, factory: Callable[[dict], Scorer]) -> None:
     _REGISTRY[name] = factory
@@ -83,6 +114,8 @@ def build_scorers(config: ScorerConfig) -> list[Scorer]:
             )
         scorer = _REGISTRY[stype](entry["options"])
         for key in scorer.metrics:
+            if key in _SYSTEM_METRICS:
+                raise GateConfigError(f"scorer '{stype}' cannot own system metric '{key}'")
             if key in owned:
                 raise GateConfigError(
                     f"metric '{key}' is emitted by both '{owned[key]}' and '{stype}' — "
@@ -97,10 +130,11 @@ def aggregate_scores(scorers: list[Scorer], scored_items: list[dict]) -> dict[st
     """scored_items: one {metric_key: item_result} dict per successfully-answered item."""
     aggregates: dict[str, dict] = {}
     for scorer in scorers:
+        results = [validate_item_scores(
+            scorer, {key: r[key] for key in scorer.metrics if key in r}
+        ) for r in scored_items]
         for key, spec in scorer.metrics.items():
-            applicable = [
-                r[key] for r in scored_items if key in r and r[key]["applicable"]
-            ]
+            applicable = [r[key] for r in results if r[key]["applicable"]]
             denominator = len(applicable)
             if spec["mode"] == "pass_rate":
                 numerator = sum(1 for r in applicable if r["passed"])

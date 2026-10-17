@@ -21,7 +21,7 @@ from .loading import Dataset, PricingTable, RunConfig
 from .metrics import LOWER, percentile, rate_metric, scalar_metric, unavailable_metric
 from .pricing import item_cost_usd, normalize_token_count
 from .providers import build_provider
-from .scorers import Scorer, aggregate_scores
+from .scorers import Scorer, aggregate_scores, validate_item_scores
 
 
 @dataclass
@@ -144,7 +144,13 @@ def run_config(
             stage = "score"
             scores: dict = {}
             for scorer in scorers:
-                scores.update(scorer.score_item(item, parsed))
+                item_scores = validate_item_scores(scorer, scorer.score_item(item, parsed))
+                overlap = scores.keys() & item_scores.keys()
+                if overlap:
+                    raise GateConfigError(
+                        f"scorer '{scorer.name}' overwrites item '{item.id}' metrics {sorted(overlap)}"
+                    )
+                scores.update(item_scores)
             record.scores = scores
             record.status = "ok"
         except GateConfigError:

@@ -100,10 +100,15 @@ register_scorer("politeness", PolitenessScorer)
 Rules:
 
 - **One owner per metric.** `build_scorers` rejects two scorers emitting the same key.
+  System metrics (`errors.error_rate`, latency, token and cost metrics) cannot be
+  owned by a scorer. Each call must return exactly its declared metric keys.
 - **Declare `kind: "heuristic_rate"`** for rule-based proxies so reports label them
   honestly. Use `mode: "violation_rate"` for lower-is-better rates (see `abstention.py`).
 - **`applicable=False` over fake passes.** An item your scorer can't judge must not
   inflate the denominator.
+  Each result requires boolean `applicable`, boolean `passed` when applicable
+  (otherwise `None`), and optional `detail` as a string or `None`. Missing,
+  undeclared or malformed results are configuration errors (exit 2).
 - Options arrive via scorer config (`{"type": "politeness", "options": {...}}`); validate
   them in `__init__` and raise `GateConfigError` on nonsense — exit 2 beats a wrong verdict.
 - Thresholds referencing your metric work immediately; nothing in `gate.py` changes.
