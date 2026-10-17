@@ -488,7 +488,7 @@ def test_markdown_escapes_pipes_and_newlines_in_metric_cells():
         line for line in md.splitlines() if line.startswith("| cost.total_usd |")
     )
     # Pipe from the note is escaped so it cannot start a new table cell.
-    assert "a\\|b" in row
+    assert "a&#124;b" in row
     assert len(re.findall(r"(?<!\\)\|", row)) == 6
     # Newline is folded so the metric stays on a single table row.
     assert "<br/>" in row

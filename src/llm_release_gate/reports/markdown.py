@@ -4,15 +4,19 @@ next, full metric table after, identity block last."""
 
 from __future__ import annotations
 
+import html
+import re
+
 from . import HEURISTIC_FOOTNOTE, fmt_delta, fmt_value, is_heuristic, verdict_word
 
 _VERDICT_ICON = {"pass": "✅", "fail": "❌", "warn": "⚠️", "skipped": "⏭️"}
 
 
 def _escape_cell(text: str) -> str:
-    return (
-        text.replace("\r\n", "<br/>").replace("\n", "<br/>").replace("\r", "<br/>").replace("|", "\\|")
-    )
+    text = html.escape(str(text), quote=False)
+    text = re.sub(r"[\\`*\[\]{}#!|]|(?<!\w)_|_(?!\w)", lambda m: f"&#{ord(m[0])};", text)
+    return (text.replace("@", "@\u200b").replace("\r\n", "<br/>")
+            .replace("\n", "<br/>").replace("\r", "<br/>"))
 
 
 def render_markdown(report: dict) -> str:
@@ -26,9 +30,9 @@ def render_markdown(report: dict) -> str:
     lines.append(f"## {icon} llm-release-gate: **{verdict_word(gate['verdict'])}**")
     lines.append("")
     lines.append(
-        f"`{inputs['baseline_config']['name']}` ({inputs['baseline_config']['model']}) vs "
-        f"`{inputs['candidate_config']['name']}` ({inputs['candidate_config']['model']}) "
-        f"on dataset **{inputs['dataset']['name']}** v{inputs['dataset']['version']} "
+        f"<code>{_escape_cell(inputs['baseline_config']['name'])}</code> ({_escape_cell(inputs['baseline_config']['model'])}) vs "
+        f"<code>{_escape_cell(inputs['candidate_config']['name'])}</code> ({_escape_cell(inputs['candidate_config']['model'])}) "
+        f"on dataset **{_escape_cell(inputs['dataset']['name'])}** v{_escape_cell(inputs['dataset']['version'])} "
         f"({inputs['dataset']['n_items']} items, task: {inputs['dataset']['task']})"
     )
     lines.append("")
@@ -40,11 +44,11 @@ def render_markdown(report: dict) -> str:
         for rule in breached:
             rule_icon = _VERDICT_ICON[rule["verdict"]]
             implicit = " *(implicit default rule)*" if rule["implicit"] else ""
-            lines.append(f"- {rule_icon} **{rule['metric']}**: {rule['message']}{implicit}")
+            lines.append(f"- {rule_icon} **{_escape_cell(rule['metric'])}**: {_escape_cell(rule['message'])}{implicit}")
         lines.append("")
 
     for notice in gate["notices"]:
-        lines.append(f"> ⚠️ {notice}")
+        lines.append(f"> ⚠️ {_escape_cell(notice)}")
     if gate["notices"]:
         lines.append("")
 
@@ -78,7 +82,7 @@ def render_markdown(report: dict) -> str:
         ]
         gate_cell = _escape_cell(", ".join(gate_cells) if gate_cells else "—")
         delta_txt = _escape_cell(fmt_delta(entry))
-        lines.append(f"| {key}{mark} | {b_txt} | {c_txt} | {delta_txt} | {gate_cell} |")
+        lines.append(f"| {_escape_cell(key)}{mark} | {b_txt} | {c_txt} | {delta_txt} | {gate_cell} |")
     lines.append("")
     if heuristic_used:
         lines.append(f"† {HEURISTIC_FOOTNOTE}.")
@@ -104,7 +108,7 @@ def render_markdown(report: dict) -> str:
     lines.append(f"- thresholds: `{inputs['thresholds']['sha256']}`")
     pricing = inputs["pricing_table"]
     if pricing["sha256"]:
-        lines.append(f"- pricing table: v{pricing['version']} `{pricing['sha256']}`")
+        lines.append(f"- pricing table: v{_escape_cell(pricing['version'])} `{pricing['sha256']}`")
     else:
         lines.append("- pricing table: none supplied (cost reported unavailable)")
     lines.append(f"- result: `{report['result_hash']}`")
