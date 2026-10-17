@@ -250,12 +250,12 @@ def _validate_expected(expected: dict, path: str, i: int, item_id: str) -> None:
             )
 
 
-def _validate_grounded_documents(item_input: dict, path: str, i: int, item_id: str) -> None:
+def _validate_grounded_documents(item_input: dict, where: str) -> None:
     """Fail-closed shape check for ``input.documents`` on grounded tasks.
 
     Absent stays allowed (adapters render it as ""); when present it must be
-    a list of ``{"id", "text"}`` objects with a non-empty string id and
-    string text, mirroring the adapter contract so a bad dataset exits 2
+    a list of ``{"id", "text"}`` objects with unique non-empty string ids and
+    string text, shared with the adapters so a bad dataset exits 2
     instead of escaping as KeyError/TypeError mid-run.
     """
     if "documents" not in item_input:
@@ -263,25 +263,31 @@ def _validate_grounded_documents(item_input: dict, path: str, i: int, item_id: s
     docs = item_input["documents"]
     if not isinstance(docs, list):
         raise GateConfigError(
-            f"dataset {path}: item #{i} '{item_id}' field 'input.documents' "
+            f"{where} field 'input.documents' "
             f"must be a list of objects with string 'id' and 'text'"
         )
+    seen: set[str] = set()
     for pos, doc in enumerate(docs):
         if not isinstance(doc, dict):
             raise GateConfigError(
-                f"dataset {path}: item #{i} '{item_id}' field "
+                f"{where} field "
                 f"'input.documents[{pos}]' must be an object with string 'id' and 'text'"
             )
         doc_id = doc.get("id")
         text = doc.get("text")
         if not isinstance(doc_id, str) or not doc_id.strip():
             raise GateConfigError(
-                f"dataset {path}: item #{i} '{item_id}' field "
+                f"{where} field "
                 f"'input.documents[{pos}].id' must be a non-empty string"
             )
+        if doc_id in seen:
+            raise GateConfigError(
+                f"{where} field 'input.documents[{pos}].id': duplicate document id '{doc_id}'"
+            )
+        seen.add(doc_id)
         if not isinstance(text, str):
             raise GateConfigError(
-                f"dataset {path}: item #{i} '{item_id}' field "
+                f"{where} field "
                 f"'input.documents[{pos}].text' must be a string"
             )
 
@@ -340,7 +346,9 @@ def load_dataset(path: str) -> Dataset:
         if isinstance(entry.get("expected", {}), dict):
             _validate_expected(entry.get("expected", {}), path, i, item_id)
         if task in ("rag", "assistant") and isinstance(entry.get("input", {}), dict):
-            _validate_grounded_documents(entry.get("input", {}), path, i, item_id)
+            _validate_grounded_documents(
+                entry.get("input", {}), f"dataset {path}: item #{i} '{item_id}'",
+            )
         items.append(
             DatasetItem(
                 id=item_id,
