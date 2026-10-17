@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Reject an explicit JSON Schema `"type": null` as a configuration error (exit 2),
+  including nested schemas. Omitted `type` stays unconstrained; `"type": "null"`
+  still accepts only JSON null.
+
+- Require unique document IDs within each `rag` or `assistant` dataset item.
+  Duplicate IDs raise a contextual configuration error (exit 2), including
+  direct adapter calls, instead of allowing ambiguous citations to pass.
+
 - Unknown keys in run configs and scorer configs (top level and scorer entries) are now
   configuration errors (exit 2) naming the allowed keys, instead of being ignored.
 
