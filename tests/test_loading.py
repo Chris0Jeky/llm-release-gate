@@ -4,9 +4,12 @@ from __future__ import annotations
 
 import builtins
 import json
+from pathlib import Path
 
 import pytest
 
+from conftest import gate_argv
+from llm_release_gate.cli import main
 from llm_release_gate.errors import GateConfigError
 from llm_release_gate.loading import (
     load_dataset,
@@ -106,6 +109,35 @@ def test_duplicate_keys_rejected(tmp_path, filename, raw, loader, dup_key):
     message = str(excinfo.value)
     assert dup_key in message
     assert str(path) in message
+
+
+@pytest.mark.parametrize("target", [
+    "dataset.json", "baseline.json", "candidate.json", "scorers.json",
+    "thresholds.json", "pricing.json", "fixtures/baseline.json", "fixtures/candidate.json",
+])
+def test_all_gate_inputs_reject_duplicate_keys(mini_gate, capsys, target):
+    paths = mini_gate()
+    path = paths["tmp"] / target
+    source = path.read_text(encoding="utf-8")
+    path.write_text(source[:-1] + ', "duplicate": 1, "duplicate": 2}', encoding="utf-8")
+    assert main(gate_argv(paths)) == 2
+    message = capsys.readouterr().err
+    assert "duplicate key 'duplicate'" in message
+    assert str(path).replace("\\", "/") in message.replace("\\", "/")
+    assert not (Path(paths["out"]) / "report.json").exists()
+
+
+def test_duplicate_error_constraint_cannot_pass_gate(mini_gate, capsys):
+    paths = mini_gate(candidate_responses={
+        key: {"error": "provider unavailable"} for key in ("r1", "r2", "r3")
+    })
+    Path(paths["thresholds"]).write_text(
+        '{"rules":[{"metric":"errors.error_rate","max_value":0,"max_value":1}]}',
+        encoding="utf-8",
+    )
+    assert main(gate_argv(paths)) == 2
+    assert "duplicate key 'max_value'" in capsys.readouterr().err
+    assert not (Path(paths["out"]) / "report.json").exists()
 
 
 @pytest.mark.parametrize("bad_version", [float("inf"), float("-inf"), float("nan")])
