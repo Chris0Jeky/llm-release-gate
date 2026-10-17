@@ -154,6 +154,14 @@ Dataset and config names, and model ids, are non-empty strings. `"123"` is valid
 JSON input files, including fake-provider fixtures, reject duplicate object keys
 as configuration errors (exit 2).
 
+When present, `expected.quality` must contain at least one keyword assertion in
+`must_contain` or `must_not_contain`; keywords must be non-blank strings. Empty
+blocks/lists are configuration errors (exit 2). Omit `quality` to opt out;
+`expected: {}` remains valid.
+
+Pricing currency must be exactly `USD` (also the default when omitted).
+Other currencies are configuration errors (exit 2); no conversion is performed.
+
 Each `rag` or `assistant` item's documents must have unique IDs. Repeated IDs
 are configuration errors (exit 2), including when using the adapters directly.
 
@@ -183,6 +191,14 @@ Rates ship with numerator and denominator, over applicable items only. A heurist
 ### Honest numbers
 
 Unknown token counts and latency stay `None`. Unknown cost is unavailable plus a reason. Partial token data does not become a total. A rule on an unavailable metric fails closed unless `on_unavailable` says otherwise. Provider failures cannot hide behind the items that succeeded.
+
+Relative rules require the same successful/applicable item IDs on both sides.
+Latency comparisons also require a measurement for every answered item on each
+side. Otherwise the comparative check is unavailable (fail by default), naming
+missing IDs and both denominators; its delta is omitted. Candidate-only
+`min_value`/`max_value` constraints still use the full candidate aggregate.
+Stored-bundle `audit` applies the same comparison guard to the recorded item
+evidence without rerunning models or scorers.
 
 ## Commands on this checkout
 
