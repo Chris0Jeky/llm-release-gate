@@ -67,5 +67,5 @@ def test_smoke_refuses_false_positive_evidence(tmp_path, failure):
             result.stdout = '{"policy_verdict":"pass","recorded_gate_verdict":"pass"}'
         if failure == "diagnostic-loss" and args[2] == "run":
             (target / "run.json").unlink()
-    with pytest.raises((AssertionError, FileNotFoundError, KeyError)):
+    with pytest.raises((SystemExit, FileNotFoundError, KeyError)):
         verify_dist.smoke_replay_features(source_cli_runner([], mutate), tmp_path)

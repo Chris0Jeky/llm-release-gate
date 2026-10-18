@@ -141,3 +141,19 @@ def test_run_continues_when_every_item_fails(mini_gate):
         assert latency["available"] is False
         assert latency["value"] is None
         assert latency["note"] == "provider reported no latency"
+
+
+@pytest.mark.parametrize("entry", [
+    {"text": 123}, {"text": None}, {}, {"error": None}, {"error": 123},
+    {"text": "ok", "error": None}, {"text": None, "error": "timeout"},
+])
+@pytest.mark.parametrize("max_error_rate", [0.0, 1.0])
+def test_malformed_fixture_content_exits_config_error(mini_gate, capsys, entry, max_error_rate):
+    paths = mini_gate(
+        candidate_responses=dict(GOOD_RESPONSE, r1=entry),
+        thresholds={"rules": [{"metric": "errors.error_rate", "max_value": max_error_rate}]},
+    )
+    assert main(gate_argv(paths)) == 2
+    error = capsys.readouterr().err
+    assert "model 'm-cand'" in error and "item 'r1'" in error
+    assert "Traceback" not in error

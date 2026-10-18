@@ -59,7 +59,7 @@ def publish(env, api=github_api):
     if env.get('DEFAULT_TOKEN') != 'true':
         try:
             writer = api('user')['login']
-        except (OSError, subprocess.SubprocessError):
+        except (OSError, subprocess.SubprocessError, ValueError, KeyError):
             writer = None
     endpoint = f'repos/{repo}/issues/{pr}/comments'
     pages = api(endpoint + '?per_page=100', paginate=True)
@@ -93,7 +93,12 @@ def publish(env, api=github_api):
     error = env.get('GATE_EXIT_CODE') not in ('0', '1') or not env.get('REPORT_MD')
     summary = ('## llm-release-gate: unable to evaluate\n\n'
                'No verdict is available for this head. See the workflow check.')
-    report = summary if error else Path(env['REPORT_MD']).read_text(encoding='utf-8')
+    report = summary
+    if not error:
+        try:
+            report = Path(env['REPORT_MD']).read_text(encoding='utf-8')
+        except (OSError, UnicodeError):
+            error = True
     if not any(previous == identity for _, previous in owned):
         api(endpoint, method='POST', data={
             'body': f'{MARKER}\n{identity_line(identity)}\n\n{context}\n\n{report}'})

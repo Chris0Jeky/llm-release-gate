@@ -4,6 +4,10 @@ from __future__ import annotations
 
 import json
 
+import pytest
+
+from llm_release_gate.errors import GateConfigError
+
 
 def _write(path, obj) -> str:
     path.write_text(json.dumps(obj), encoding="utf-8")
@@ -67,15 +71,13 @@ def test_malformed_middle_item_records_error_and_continues(tmp_path):
     }
     dataset = load_dataset(_write(tmp_path / "dataset.json", dataset_doc))
 
-    # Middle item's fixture text is a JSON number, not a string. It passes
-    # fixture validation and reaches adapter.parse, where the old code raised
-    # TypeError outside the ProviderError try and aborted the run with no report.
+    # A valid simulated provider failure must remain isolated to the middle item.
     _write(tmp_path / "fx.json", {
         "version": "1",
         "responses": {
             "m": {
                 "r1": {"text": "The sky is blue. [doc:s1]"},
-                "r2": {"text": 123},
+                "r2": {"error": "synthetic provider failure"},
                 "r3": {"text": "The ocean is blue. [doc:s1]"},
             }
         },
@@ -161,93 +163,15 @@ def _run_two_item_gate(tmp_path, responses):
     return run_config(dataset, config, scorers, no_pricing())
 
 
-def test_non_string_fixture_text_is_per_item_error_and_continues(tmp_path):
-    result = _run_two_item_gate(tmp_path, {
-        "m": {
-            "i1": {"text": 123},
-            "i2": {"text": "The ocean is blue. [doc:s1]"},
-        }
-    })
-
-    assert result.n_items == 2
-    assert result.n_ok == 1
-    assert result.n_errors == 1
-    by_id = {r.item_id: r for r in result.records}
-    assert by_id["i1"].status == "error"
-    assert by_id["i1"].error
-    assert "i1" in by_id["i1"].error
-    assert "m" in by_id["i1"].error
-    assert "non-string" in by_id["i1"].error
-    assert by_id["i2"].status == "ok"
-    assert result.aggregates["errors.error_rate"]["value"] == 1 / 2
-
-
-def test_null_and_list_fixture_text_are_per_item_errors(tmp_path):
-    from llm_release_gate.loading import (
-        load_dataset,
-        load_run_config,
-        load_scorer_config,
-        no_pricing,
-    )
-    from llm_release_gate.runner import run_config
-    from llm_release_gate.scorers import build_scorers
-
-    dataset_doc = {
-        "name": "d",
-        "version": "1",
-        "task": "rag",
-        "items": [
-            _rag_item("i1", "What color is the sky?", "The sky is blue.", "blue"),
-            _rag_item(
-                "i2",
-                "What is the capital of Freedonia?",
-                "The capital of Freedonia is Fredville.",
-                "fredville",
-            ),
-            _rag_item(
-                "i3",
-                "What color is the ocean?",
-                "The ocean is blue.",
-                "blue",
-            ),
-        ],
-    }
-    dataset = load_dataset(_write(tmp_path / "dataset.json", dataset_doc))
-    _write(tmp_path / "fx.json", {
-        "version": "1",
-        "responses": {
+@pytest.mark.parametrize("text", [123, None, ["The sky is blue."]])
+def test_non_string_fixture_text_is_config_error(tmp_path, text):
+    with pytest.raises(GateConfigError, match="model 'm', item 'i1': text must be a string"):
+        _run_two_item_gate(tmp_path, {
             "m": {
-                "i1": {"text": None},
-                "i2": {"text": ["The capital of Freedonia is Fredville."]},
-                "i3": {"text": "The ocean is blue. [doc:s1]"},
+                "i1": {"text": text},
+                "i2": {"text": "The ocean is blue. [doc:s1]"},
             }
-        },
-    })
-    config = load_run_config(_write(tmp_path / "cand.json", {
-        "name": "candidate",
-        "provider": "fake",
-        "model": "m",
-        "prompt": {"system": "", "template": "$question"},
-        "provider_options": {"fixtures": "fx.json"},
-    }), "candidate")
-    scorers = build_scorers(load_scorer_config(_write(tmp_path / "scorers.json", {
-        "scorers": [{"type": "keyword_quality"}],
-    })))
-
-    result = run_config(dataset, config, scorers, no_pricing())
-
-    assert result.n_items == 3
-    assert result.n_ok == 1
-    assert result.n_errors == 2
-    by_id = {r.item_id: r for r in result.records}
-    for bad_id in ("i1", "i2"):
-        assert by_id[bad_id].status == "error"
-        assert by_id[bad_id].error
-        assert bad_id in by_id[bad_id].error
-        assert "m" in by_id[bad_id].error
-        assert "non-string" in by_id[bad_id].error
-    assert by_id["i3"].status == "ok"
-    assert result.aggregates["errors.error_rate"]["value"] == 2 / 3
+        })
 
 
 def test_latency_partial_coverage_noted():
