@@ -196,3 +196,25 @@ def test_comment_delivery_failure_is_nonfatal_and_content_free(monkeypatch, caps
     monkeypatch.setattr(reporter, 'publish', fail)
     assert reporter.main() == 0
     assert capsys.readouterr().out == reporter.WARNING + '\n'
+
+
+@pytest.mark.parametrize('payload', ['{}', 'not JSON'])
+def test_app_token_malformed_user_payload_falls_back_to_bot_matching(tmp_path, monkeypatch, payload):
+    reporter, api = load_reporter(), FakeGithub()
+    api.writer = 'release-app[bot]'
+    old = api.add(reporter.MARKER + '\n\nold PASS', login=api.writer)
+    human = api.add(reporter.MARKER + '\n\nhuman discussion', login='participant')
+    monkeypatch.setattr(reporter.subprocess, 'run', lambda *args, **kwargs: SimpleNamespace(stdout=payload))
+
+    def transport(endpoint, **kwargs):
+        if endpoint == 'user':
+            return reporter.github_api(endpoint, **kwargs)
+        return api(endpoint, **kwargs)
+
+    env = dict(invocation(tmp_path), DEFAULT_TOKEN='false')
+    reporter.publish(env, transport)
+    reporter.publish(env, transport)
+    assert len(api.comments) == 3
+    assert '**PASS**' in api.comments[-1]['body']
+    assert 'old PASS' not in old['body']
+    assert human['body'].endswith('human discussion')

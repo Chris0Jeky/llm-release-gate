@@ -50,6 +50,11 @@ def _validate_fixtures(responses: dict, path: str) -> None:
             where = f"fixtures {path}, model '{model}', item '{item_id}'"
             if not isinstance(entry, dict):
                 raise GateConfigError(f"fake provider {where}: entry must be an object")
+            if "text" not in entry and "error" not in entry:
+                raise GateConfigError(f"fake provider {where}: entry must have 'text' or 'error'")
+            for field in ("text", "error"):
+                if field in entry and not isinstance(entry[field], str):
+                    raise GateConfigError(f"fake provider {where}: {field} must be a string")
             for field in ("prompt_tokens", "completion_tokens"):
                 value = entry.get(field)
                 if value is not None and (
