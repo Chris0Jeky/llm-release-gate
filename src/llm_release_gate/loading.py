@@ -569,7 +569,7 @@ def load_pricing(path: str) -> PricingTable:
     elif not isinstance(data["currency"], str) or not data["currency"]:
         raise GateConfigError(f"pricing table {path}: 'currency' must be a non-empty string")
     else:
-        currency = data["currency"]
+        currency = data["currency"].upper()
     if currency != "USD":
         raise GateConfigError(
             f"pricing table {path}: 'currency' must be exactly 'USD'; "

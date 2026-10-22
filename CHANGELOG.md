@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Fixed: accept pricing currency codes case-insensitively and normalize USD
+  to uppercase; non-USD currencies remain configuration errors (exit 2). (#154)
+
 - Fixed: validate present `input.documents` for every dataset task at load time;
   malformed documents raise a contextual configuration error (exit 2) before
   reports are written. Omitted documents remain accepted. This tightens loading:
