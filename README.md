@@ -201,6 +201,16 @@ missing IDs and both denominators; its delta is omitted. Candidate-only
 Stored-bundle `audit` applies the same comparison guard to the recorded item
 evidence without rerunning models or scorers.
 
+Citation applicability depends on model output: abstentions are excluded from
+`citations.valid_rate`. If the candidate abstains on an item the baseline answered
+and citation scoring applied to, their citation cohorts differ, so `max_drop_abs`
+and `max_drop_pct` checks become unavailable and fail by default, even if answer
+quality is otherwise acceptable. RAG suites that expect abstention changes may
+want `"on_unavailable": "warn"` on citation rules. This reports unavailable
+citation comparisons as warnings instead of blocking the gate, giving up the
+fail-closed guarantee for those comparisons; evaluable citation breaches still
+follow the rule's `level`, and other rules can still fail.
+
 ## Commands on this checkout
 
 | Command | What it does | In v0.2.0 |

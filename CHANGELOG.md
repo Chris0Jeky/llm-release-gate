@@ -7,6 +7,19 @@
   reports are written. Omitted documents remain accepted. This tightens loading:
   a non-grounded dataset carrying an unrelated `documents` shape now fails at load.
 
+- Citation validity excludes abstentions, so a candidate abstaining where the
+  baseline had an applicable answer makes citation `max_drop_abs`/`max_drop_pct`
+  checks incomparable and unavailable (fail by default), even if answer quality
+  is otherwise acceptable. RAG suites may use `on_unavailable: "warn"` for citation
+  rules, trading fail-closed enforcement of unavailable comparisons for warnings.
+  (#154)
+
+- **BREAKING:** A baseline-side provider error that changes the compared item
+  cohorts now makes affected relative checks unavailable and fails the gate
+  (exit 1) under the default `on_unavailable: "fail"`, instead of allowing a
+  healthy candidate to pass (exit 0) with only a baseline-error notice. The
+  notice remains; candidate-only constraints retain their scope. (#154)
+
 - Refuse relative metric comparisons over different successful/applicable item
   cohorts or incomplete latency coverage: checks become unavailable (fail by
   default), naming missing item IDs and both denominators. Suppress misleading
