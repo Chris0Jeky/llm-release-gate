@@ -52,9 +52,9 @@
   still accepts only JSON null.
 
 - Require unique document IDs within each `rag` or `assistant` dataset item
-  (now any task whose item carries `input.documents`; see the entry above).
-  Duplicate IDs raise a contextual configuration error (exit 2), including
-  direct adapter calls, instead of allowing ambiguous citations to pass.
+  (at load, now for any task whose item carries `input.documents`; see the entry
+  above). Duplicate IDs raise a contextual configuration error (exit 2), also on
+  direct `rag`/`assistant` adapter calls, instead of allowing ambiguous citations to pass.
 
 - Unknown keys in run configs and scorer configs (top level and scorer entries) are now
   configuration errors (exit 2) naming the allowed keys, instead of being ignored.
