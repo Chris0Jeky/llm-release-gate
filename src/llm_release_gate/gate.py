@@ -21,6 +21,11 @@ Semantics:
 - A malformed aggregate entry (non-dict, or a dict missing its "available" /
   "value" keys, or marked available with a missing value) is a configuration
   error (exit 2), never a KeyError.
+- Integer-only comparisons are exact, including percentage comparisons before
+  division. Float comparisons allow EPS in the constraint's units (percentage
+  points for percentages). Zero-baseline percentages have zero tolerance:
+  signed zero is zero; any representable change in the guarded direction
+  breaches a finite cap. A nonzero value cannot be inferred to be float noise.
 """
 
 from __future__ import annotations
@@ -57,41 +62,58 @@ def _fmt(value: float | None) -> str:
         return str(value)  # Preserve exact integers outside floating-point range.
 
 
+def _exceeds(value: float, threshold: float) -> bool:
+    if type(value) is int and type(threshold) is int:
+        return value > threshold
+    return value > threshold + EPS
+
+
+def _percentage_change(delta: float, baseline: float, threshold: float) -> tuple[bool, float]:
+    pct = delta / abs(baseline) * 100
+    if all(type(value) is int for value in (delta, baseline, threshold)):
+        # Cross-multiply before division can round away an integer violation.
+        return delta * 100 > threshold * abs(baseline), pct
+    return _exceeds(pct, threshold), pct
+
+
 def _check_constraint(
     name: str, threshold: float, baseline: float | None, candidate: float
 ) -> tuple[bool, float | None, str]:
     """Return (breached, observed, message). baseline is None only for min/max_value."""
     if name == "max_drop_abs":
         drop = baseline - candidate
-        return drop > threshold + EPS, drop, f"drop {_fmt(drop)} vs allowed {_fmt(threshold)}"
+        return _exceeds(drop, threshold), drop, f"drop {_fmt(drop)} vs allowed {_fmt(threshold)}"
     if name == "max_drop_pct":
         if baseline == 0:
-            breached = candidate < -EPS  # a rate cannot drop from 0 unless it goes negative
+            breached = candidate < 0  # any drop from zero is an infinite percentage
             return breached, None, "baseline is 0; percentage drop undefined"
-        drop_pct = (baseline - candidate) / abs(baseline) * 100
-        return drop_pct > threshold + EPS, drop_pct, (
+        breached, drop_pct = _percentage_change(baseline - candidate, baseline, threshold)
+        return breached, drop_pct, (
             f"drop {_fmt(drop_pct)}% vs allowed {_fmt(threshold)}%"
         )
     if name == "max_increase_abs":
         inc = candidate - baseline
-        return inc > threshold + EPS, inc, f"increase {_fmt(inc)} vs allowed {_fmt(threshold)}"
+        return _exceeds(inc, threshold), inc, f"increase {_fmt(inc)} vs allowed {_fmt(threshold)}"
     if name == "max_increase_pct":
         if baseline == 0:
-            breached = candidate > EPS  # any increase from 0 is an infinite percentage
+            breached = candidate > 0  # no absolute EPS allowance at a zero baseline
             return breached, None, (
                 "baseline is 0; any increase breaches a percentage cap"
-                if breached else "baseline and candidate both 0"
+                if breached else (
+                    "baseline and candidate both 0" if candidate == 0
+                    else "baseline is 0; candidate decreased"
+                )
             )
-        inc_pct = (candidate - baseline) / abs(baseline) * 100
-        return inc_pct > threshold + EPS, inc_pct, (
+        breached, inc_pct = _percentage_change(candidate - baseline, baseline, threshold)
+        return breached, inc_pct, (
             f"increase {_fmt(inc_pct)}% vs allowed {_fmt(threshold)}%"
         )
     if name == "min_value":
-        return candidate < threshold - EPS, candidate, (
+        return _exceeds(-candidate, -threshold), candidate, (
             f"candidate {_fmt(candidate)} vs required minimum {_fmt(threshold)}"
         )
     if name == "max_value":
-        return candidate > threshold + EPS, candidate, (
+        return _exceeds(candidate, threshold), candidate, (
             f"candidate {_fmt(candidate)} vs allowed maximum {_fmt(threshold)}"
         )
     raise GateConfigError(f"unknown constraint '{name}'")  # loading validates; belt+braces

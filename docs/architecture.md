@@ -95,6 +95,16 @@ change.
 ## Verdict semantics
 
 - Rule breach at level `fail` → gate **fail** (exit 1). `warn` only annotates.
+- Integer-only threshold comparisons are exact, including percentage checks
+  (compared before division can round). Comparisons involving floats retain an
+  absolute tolerance of `1e-9` in the constraint's units: metric units for
+  absolute checks, percentage points for percentage checks with a nonzero baseline.
+- Zero-baseline percentage checks use **zero tolerance**. Both `0.0` and `-0.0`
+  count as zero; every representable positive candidate breaches a finite
+  `max_increase_pct`, including a cap of zero. Likewise, a negative candidate
+  breaches `max_drop_pct` from zero. Improvements pass. There is no magnitude
+  scale at zero that can distinguish float noise from a real tiny measurement,
+  so nonzero candidates are never silently normalized to zero.
 - A rule whose metric is unavailable applies its `on_unavailable` policy — default
   **fail** (fail-closed: a gate you cannot evaluate is not a passing gate).
 - A rule naming a metric nothing produces → configuration error (exit 2).
