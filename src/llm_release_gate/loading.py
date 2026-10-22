@@ -256,7 +256,7 @@ def _validate_expected(expected: dict, path: str, i: int, item_id: str) -> None:
 
 
 def _validate_grounded_documents(item_input: dict, where: str) -> None:
-    """Fail-closed shape check for ``input.documents`` on grounded tasks.
+    """Fail-closed shape check for ``input.documents`` on any task.
 
     Absent stays allowed (adapters render it as ""); when present it must be
     a list of ``{"id", "text"}`` objects with unique non-empty string ids and
@@ -350,7 +350,7 @@ def load_dataset(path: str) -> Dataset:
                 )
         if isinstance(entry.get("expected", {}), dict):
             _validate_expected(entry.get("expected", {}), path, i, item_id)
-        if task in ("rag", "assistant") and isinstance(entry.get("input", {}), dict):
+        if isinstance(entry.get("input", {}), dict):
             _validate_grounded_documents(
                 entry.get("input", {}), f"dataset {path}: item #{i} '{item_id}'",
             )

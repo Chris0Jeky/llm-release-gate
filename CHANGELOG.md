@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Fixed: validate present `input.documents` for every dataset task at load time;
+  malformed documents raise a contextual configuration error (exit 2) before
+  reports are written. Omitted documents remain accepted. This tightens loading:
+  a non-grounded dataset carrying an unrelated `documents` shape now fails at load.
+
 - Citation validity excludes abstentions, so a candidate abstaining where the
   baseline had an applicable answer makes citation `max_drop_abs`/`max_drop_pct`
   checks incomparable and unavailable (fail by default), even if answer quality

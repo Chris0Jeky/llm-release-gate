@@ -66,7 +66,8 @@ their existing hashes. Files are still read whole, with no application size cap.
 `expected.should_abstain`. Extraction: `input.text`, `expected.fields`. The `expected` sub-fields above are type-checked at load and a wrong shape is a configuration error (exit 2).
 `input.question` (grounded tasks) and `input.text` (extraction) are required
 non-empty strings; an item missing its task's prompt input is a configuration
-error (exit 2), never an empty-prompt run. `input.documents` stays optional.
+error (exit 2), never an empty-prompt run. `input.documents` stays optional; when present
+(any task) its `{id,text}` shape and unique ids are checked at load (exit 2).
 
 **Run config** — `{"name", "provider", "model", "params", "prompt": {"system",
 "template"}, "provider_options"}`. Templates use `string.Template` syntax

@@ -162,8 +162,9 @@ blocks/lists are configuration errors (exit 2). Omit `quality` to opt out;
 Pricing currency must be exactly `USD` (also the default when omitted).
 Other currencies are configuration errors (exit 2); no conversion is performed.
 
-Each `rag` or `assistant` item's documents must have unique IDs. Repeated IDs
-are configuration errors (exit 2), including when using the adapters directly.
+When an item carries `input.documents` (any task), it must be a list of
+`{"id", "text"}` objects with unique IDs. Malformed or repeated documents are
+configuration errors (exit 2), including when using the adapters directly.
 
 The `json_schema` scorer rejects an explicit `"type": null` as a configuration
 error (exit 2), including in nested schemas. Omit `type` for an unconstrained
