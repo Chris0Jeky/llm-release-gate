@@ -86,7 +86,10 @@ def _check_constraint(
     if name == "max_drop_pct":
         if baseline == 0:
             breached = candidate < 0  # any drop from zero is an infinite percentage
-            return breached, None, "baseline is 0; percentage drop undefined"
+            return breached, None, (
+                "baseline is 0; any drop breaches a percentage cap"
+                if breached else "baseline is 0; percentage drop undefined"
+            )
         breached, drop_pct = _percentage_change(baseline - candidate, baseline, threshold)
         return breached, drop_pct, (
             f"drop {_fmt(drop_pct)}% vs allowed {_fmt(threshold)}%"
