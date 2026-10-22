@@ -19,7 +19,7 @@ def test_load_pricing_normalizes_usd_currency(tmp_path, currency):
     assert load_pricing(path).currency == "USD"
 
 
-@pytest.mark.parametrize("currency", ["EUR", "eur", "Gbp", "credits", "USD "])
+@pytest.mark.parametrize("currency", ["EUR", "eur", "Gbp", "credits", "USD ", "uſd"])
 def test_load_pricing_rejects_non_usd_currency(tmp_path, currency):
     path = write_json(tmp_path / "pricing.json", {
         "version": "1", "currency": currency, "models": {},
