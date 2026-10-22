@@ -51,7 +51,8 @@
   including nested schemas. Omitted `type` stays unconstrained; `"type": "null"`
   still accepts only JSON null.
 
-- Require unique document IDs within each `rag` or `assistant` dataset item.
+- Require unique document IDs within each `rag` or `assistant` dataset item
+  (now any task whose item carries `input.documents`; see the entry above).
   Duplicate IDs raise a contextual configuration error (exit 2), including
   direct adapter calls, instead of allowing ambiguous citations to pass.
 
