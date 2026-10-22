@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Fixed: distinguish the threshold verdict from GitHub command-file delivery
+  failures in stdout and writable step summaries, retaining exit 2 and the
+  published report verdict when delivery fails. (#163)
+
 - Fixed: compare integer-only floors, ceilings, absolute changes and percentage
   changes exactly, preventing float rounding from accepting violated thresholds
   at large integer boundaries. Previously passing edge cases now fail closed.
