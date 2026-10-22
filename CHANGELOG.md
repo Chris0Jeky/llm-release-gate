@@ -4,7 +4,8 @@
 
 - Fixed: validate present `input.documents` for every dataset task at load time;
   malformed documents raise a contextual configuration error (exit 2) before
-  reports are written. Omitted documents remain accepted.
+  reports are written. Omitted documents remain accepted. This tightens loading:
+  a non-grounded dataset carrying an unrelated `documents` shape now fails at load.
 
 - Refuse relative metric comparisons over different successful/applicable item
   cohorts or incomplete latency coverage: checks become unavailable (fail by
