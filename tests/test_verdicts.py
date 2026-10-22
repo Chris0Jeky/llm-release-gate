@@ -61,6 +61,26 @@ def test_max_increase_pct_and_zero_baseline():
     assert rule_for(evaluate_thresholds(t, baseline0, cand0), "cost.total_usd")["verdict"] == "pass"
 
 
+def test_neighboring_large_integer_ceiling_fails_closed():
+    t = thresholds(ThresholdRule("tokens.total", {"max_value": 9007199254740995}))
+    baseline = aggs(**{"tokens.total": scalar_metric(0, "tokens", LOWER)})
+    candidate = aggs(**{"tokens.total": scalar_metric(9007199254740996, "tokens", LOWER)})
+    verdict = rule_for(evaluate_thresholds(t, baseline, candidate), "tokens.total")
+    assert verdict["verdict"] == "fail"
+    assert verdict["checks"][0]["observed"] == 9007199254740996
+    assert verdict["checks"][0]["threshold"] == 9007199254740995
+
+
+@pytest.mark.parametrize("cap", [0, 25, 1e308])
+def test_tiny_positive_cost_from_zero_fails_closed(cap):
+    t = thresholds(ThresholdRule("cost.total_usd", {"max_increase_pct": cap}))
+    baseline = aggs(**{"cost.total_usd": scalar_metric(0.0, "usd", LOWER)})
+    candidate = aggs(**{"cost.total_usd": scalar_metric(1e-9, "usd", LOWER)})
+    verdict = rule_for(evaluate_thresholds(t, baseline, candidate), "cost.total_usd")
+    assert verdict["verdict"] == "fail"
+    assert verdict["checks"][0]["status"] == "breached"
+
+
 def test_min_and_max_value_look_at_candidate_only():
     t = thresholds(
         ThresholdRule("schema.valid_rate", {"min_value": 0.95}),

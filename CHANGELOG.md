@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Fixed: compare integer-only floors, ceilings, absolute changes and percentage
+  changes exactly, preventing float rounding from accepting violated thresholds
+  at large integer boundaries. Previously passing edge cases now fail closed.
+- Fixed: apply zero tolerance to zero-baseline percentage guards: any positive
+  candidate breaches a finite `max_increase_pct`, and any negative candidate
+  breaches `max_drop_pct`. Signed zero still passes; tiny nonzero regressions
+  previously hidden by the absolute float tolerance now fail closed.
+
 - Fixed: accept pricing currency codes case-insensitively and normalize USD
   to uppercase; non-USD currencies remain configuration errors (exit 2). (#154)
 

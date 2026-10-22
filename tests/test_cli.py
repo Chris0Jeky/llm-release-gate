@@ -43,6 +43,36 @@ def test_red_example_exits_one_and_names_regressions(tmp_path, capsys):
     assert "citations.valid_rate" in out
 
 
+@pytest.mark.parametrize("metric,constraints,tokens,observed", [
+    ("tokens.total", {"max_value": 9007199254740995}, 9007199254740996, 9007199254740996),
+    ("cost.total_usd", {"max_increase_pct": 0}, 1, 1e-9),
+], ids=["neighboring-large-integer-ceiling", "tiny-positive-cost-from-zero"])
+def test_numeric_boundary_violation_exits_one(mini_gate, metric, constraints, tokens, observed):
+    paths = mini_gate(
+        dataset={"name": "d", "version": "1", "task": "rag", "items": [
+            {"id": "x", "input": {"question": "q"},
+             "expected": {"quality": {"must_contain": ["ok"]}}},
+        ]},
+        scorers={"scorers": [{"type": "keyword_quality"}]},
+        baseline_responses={"x": {"text": "ok", "prompt_tokens": 0, "completion_tokens": 0}},
+        candidate_responses={"x": {"text": "ok", "prompt_tokens": tokens, "completion_tokens": 0}},
+        thresholds={"rules": [{"metric": metric, **constraints}]},
+        pricing={"version": "1", "models": {
+            model: {"input_per_mtok": 0.001, "output_per_mtok": 0}
+            for model in ("m-base", "m-cand")
+        }},
+    )
+    exit_code = main(gate_argv(paths))
+    with open(f"{paths['out']}/report.json", encoding="utf-8") as stream:
+        report = json.load(stream)
+    assert report["metrics"][metric]["baseline"]["value"] == 0
+    assert report["metrics"][metric]["candidate"]["value"] == observed
+    assert exit_code == 1
+    assert report["gate"]["verdict"] == "fail"
+    rule = next(r for r in report["rules"] if r["metric"] == metric)
+    assert rule["checks"][0]["status"] == "breached"
+
+
 def test_missing_input_file_exits_two(tmp_path, capsys):
     argv = _example_argv("rag-support-bot", str(tmp_path / "d"))
     argv[argv.index("--dataset") + 1] = "does-not-exist.json"
