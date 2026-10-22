@@ -328,6 +328,15 @@ def test_schema_violations(value, fragment):
     assert any(fragment in e for e in errors), errors
 
 
+def test_schema_type_mismatch_reports_single_error():
+    errors = validate_against_schema(
+        {"total": True},
+        {"type": "object", "properties": {"total": {"type": "number", "enum": [1]}}},
+    )
+    assert len(errors) == 1, errors
+    assert "expected number, got boolean" in errors[0], errors
+
+
 def test_schema_valid_object_passes():
     value = {"vendor": "A", "total": 9.5, "currency": "EUR", "lines": [{"sku": "s"}]}
     assert validate_against_schema(value, SCHEMA) == []
