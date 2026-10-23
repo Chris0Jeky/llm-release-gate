@@ -130,6 +130,32 @@ def _cmd_gate(args: argparse.Namespace) -> int:
     verdict = report["gate"]["verdict"]
     exit_code = EXIT_PASS if verdict == "pass" else EXIT_GATE_FAIL
 
+    delivery_failure = (f"{TOOL_NAME}: gate {verdict.upper()} (threshold verdict), "
+                        f"but output delivery failed: exit {EXIT_ERROR}")
+    delivery_error = None
+    try:
+        _emit_github_outputs({
+            "verdict": verdict,
+            "exit-code": str(exit_code),
+            "result-hash": report["result_hash"],
+            "bundle-hash": manifest["bundle_integrity"]["bundle_hash"],
+            "report-json": files["report_json"],
+            "report-md": files["report_md"],
+            "report-html": files["report_html"],
+        }, files.values())
+    except GateConfigError as exc:
+        delivery_error = exc
+    try:
+        _emit_github_summary(
+            f"> {delivery_failure}\n\n{markdown}" if delivery_error else markdown,
+            files.values(),
+        )
+    except GateConfigError as exc:
+        delivery_error = exc
+    if delivery_error:
+        print(delivery_failure)
+        raise delivery_error
+
     print(f"{TOOL_NAME}: gate {verdict.upper()}")
     print(
         f"  rules: {report['gate']['n_rules']} evaluated, "
@@ -144,16 +170,6 @@ def _cmd_gate(args: argparse.Namespace) -> int:
     print(f"  bundle hash: {manifest['bundle_integrity']['bundle_hash']}")
     _log(f"  reports: {files['report_json']}, {files['report_md']}, {files['report_html']}")
 
-    _emit_github_summary(markdown, files.values())
-    _emit_github_outputs({
-        "verdict": verdict,
-        "exit-code": str(exit_code),
-        "result-hash": report["result_hash"],
-        "bundle-hash": manifest["bundle_integrity"]["bundle_hash"],
-        "report-json": files["report_json"],
-        "report-md": files["report_md"],
-        "report-html": files["report_html"],
-    }, files.values())
     return exit_code
 
 

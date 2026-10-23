@@ -107,6 +107,37 @@ def test_github_summary_and_outputs_written(mini_gate, monkeypatch, tmp_path):
     assert "result-hash=sha256:" in out_text
 
 
+@pytest.mark.parametrize("variable", ["GITHUB_OUTPUT", "GITHUB_STEP_SUMMARY"])
+def test_github_delivery_failure_reports_threshold_verdict_and_exit_two(
+    mini_gate, monkeypatch, tmp_path, capsys, variable,
+):
+    summary = tmp_path / "summary.md"
+    outputs = tmp_path / "outputs.txt"
+    monkeypatch.setenv("GITHUB_STEP_SUMMARY", str(summary))
+    monkeypatch.setenv("GITHUB_OUTPUT", str(outputs))
+    failed_path = outputs if variable == "GITHUB_OUTPUT" else summary
+    real_open = os.open
+
+    def failing_open(path, flags, *args, **kwargs):
+        if os.fspath(path) == str(failed_path) and flags & os.O_APPEND:
+            raise PermissionError("synthetic command-file write failure")
+        return real_open(path, flags, *args, **kwargs)
+
+    monkeypatch.setattr(os, "open", failing_open)
+    paths = mini_gate()
+    assert main(gate_argv(paths)) == 2
+    captured = capsys.readouterr()
+    message = "gate PASS (threshold verdict), but output delivery failed: exit 2"
+    assert message in captured.out
+    assert "llm-release-gate: gate PASS\n" not in captured.out
+    assert f"{variable} command file could not be written" in captured.err
+    assert "Traceback" not in captured.err
+    with open(f"{paths['out']}/report.json", encoding="utf-8") as stream:
+        assert json.load(stream)["gate"]["verdict"] == "pass"
+    if variable == "GITHUB_OUTPUT":
+        assert message in summary.read_text(encoding="utf-8")
+
+
 def test_no_github_env_no_files(mini_gate, monkeypatch):
     monkeypatch.delenv("GITHUB_STEP_SUMMARY", raising=False)
     monkeypatch.delenv("GITHUB_OUTPUT", raising=False)
