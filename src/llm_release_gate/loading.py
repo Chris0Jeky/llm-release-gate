@@ -237,10 +237,12 @@ def _validate_expected(expected: dict, path: str, i: int, item_id: str) -> None:
             )
     if "must_cite" in expected:
         value = expected["must_cite"]
-        if not isinstance(value, list) or any(not isinstance(elt, str) for elt in value):
+        if not isinstance(value, list) or any(
+            not isinstance(elt, str) or not elt.strip() for elt in value
+        ):
             raise GateConfigError(
                 f"dataset {path}: item #{i} '{item_id}' field 'expected.must_cite' "
-                f"must be a list of strings"
+                f"must be a list of non-empty strings"
             )
     if "should_abstain" in expected:
         if not isinstance(expected["should_abstain"], bool):

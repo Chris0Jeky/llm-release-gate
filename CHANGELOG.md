@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Fixed: reject empty or whitespace-only `expected.must_cite` ids at dataset load
+  with a contextual configuration error (exit 2); such an id could never be cited.
+  This tightens loading: a dataset that relied on a blank id now fails at load. (#162)
+
 - Fixed: distinguish the threshold verdict from GitHub command-file delivery
   failures in stdout and writable step summaries, retaining exit 2 and the
   published report verdict when delivery fails. (#163)
