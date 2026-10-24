@@ -58,7 +58,9 @@ Missing, unreadable or non-regular files, invalid encoding or JSON, and interpre
 JSON numeric/nesting limits produce a configuration error naming the input and
 path (exit 2). Fixtures use
 the same reader and source hashing as the other inputs; valid inputs retain
-their existing hashes. Files are still read whole, with no application size cap.
+their existing hashes. Files are read whole; there is no size cap unless
+`--max-input-bytes` is set, and then an oversize input exits 2
+([automation controls](automation-controls.md)).
 
 **Dataset** — `{"name", "version", "task", "items": [{"id", "input", "expected"}]}`.
 `task` selects the adapter. Grounded tasks: `input.question` + `input.documents[{id,text}]`,
