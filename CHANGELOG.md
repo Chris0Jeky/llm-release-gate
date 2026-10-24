@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+- Fixed: distinguish the threshold verdict from GitHub command-file delivery
+  failures in stdout and writable step summaries, retaining exit 2 and the
+  published report verdict when delivery fails. (#163)
+
+- Fixed: compare integer-only floors, ceilings, absolute changes and percentage
+  changes exactly, preventing float rounding from accepting violated thresholds
+  at large integer boundaries. Previously passing edge cases now fail closed.
+- Fixed: apply zero tolerance to zero-baseline percentage guards: any positive
+  candidate breaches a finite `max_increase_pct`, and any negative candidate
+  breaches `max_drop_pct`. Signed zero still passes; tiny nonzero regressions
+  previously hidden by the absolute float tolerance now fail closed.
+
+- Fixed: accept pricing currency codes case-insensitively and normalize USD
+  to uppercase; non-USD currencies remain configuration errors (exit 2). (#154)
+
 - Fixed: validate present `input.documents` for every dataset task at load time;
   malformed documents raise a contextual configuration error (exit 2) before
   reports are written. Omitted documents remain accepted. This tightens loading:
@@ -40,9 +55,10 @@
   including nested schemas. Omitted `type` stays unconstrained; `"type": "null"`
   still accepts only JSON null.
 
-- Require unique document IDs within each `rag` or `assistant` dataset item.
-  Duplicate IDs raise a contextual configuration error (exit 2), including
-  direct adapter calls, instead of allowing ambiguous citations to pass.
+- Require unique document IDs within each `rag` or `assistant` dataset item
+  (at load, now for any task whose item carries `input.documents`; see the entry
+  above). Duplicate IDs raise a contextual configuration error (exit 2), also on
+  direct `rag`/`assistant` adapter calls, instead of allowing ambiguous citations to pass.
 
 - Unknown keys in run configs and scorer configs (top level and scorer entries) are now
   configuration errors (exit 2) naming the allowed keys, instead of being ignored.

@@ -159,12 +159,13 @@ When present, `expected.quality` must contain at least one keyword assertion in
 blocks/lists are configuration errors (exit 2). Omit `quality` to opt out;
 `expected: {}` remains valid.
 
-Pricing currency must be exactly `USD` (also the default when omitted).
-Other currencies are configuration errors (exit 2); no conversion is performed.
+Pricing currency must be `USD`, in any ASCII letter case (also the default when
+omitted). Other currencies are configuration errors (exit 2); no conversion is performed.
 
 When an item carries `input.documents` (any task), it must be a list of
 `{"id", "text"}` objects with unique IDs. Malformed or repeated documents are
-configuration errors (exit 2), including when using the adapters directly.
+configuration errors (exit 2) at load. The grounded adapters (`rag`, `assistant`)
+also enforce this when called directly; the `extraction` adapter does not read documents.
 
 The `json_schema` scorer rejects an explicit `"type": null` as a configuration
 error (exit 2), including in nested schemas. Omit `type` for an unconstrained

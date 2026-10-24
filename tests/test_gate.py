@@ -1,5 +1,7 @@
 """Fail-dominates-warn regression tests (gate verdict precedence)."""
 
+import math
+
 import pytest
 from llm_release_gate.errors import GateConfigError
 from llm_release_gate.gate import (
@@ -141,3 +143,63 @@ def test_zero_baseline_pct():
     breached, observed, _ = _check_constraint("max_increase_pct", 10, 0, 0)
     assert breached is False
     assert observed is None
+
+
+@pytest.mark.parametrize("name,threshold,baseline,candidate", [
+    ("max_value", 9007199254740995, None, 9007199254740996),
+    ("min_value", 9007199254740993, None, 9007199254740992),
+    ("max_drop_abs", 9007199254740995, 9007199254740996, 0),
+    ("max_increase_abs", 9007199254740995, 0, 9007199254740996),
+    ("max_drop_pct", 9007199254740995, 100, -9007199254740896),
+    ("max_increase_pct", 9007199254740995, 100, 9007199254741096),
+    # Division itself must not round away a one-unit integer regression.
+    ("max_drop_pct", 100, 2**60, -(2**60) - 1),
+    ("max_increase_pct", 100, 2**60, 2**61 + 1),
+])
+def test_integer_constraints_do_not_round_away_breaches(name, threshold, baseline, candidate):
+    breached, _, _ = _check_constraint(name, threshold, baseline, candidate)
+    assert breached is True
+
+
+@pytest.mark.parametrize("name,baseline,candidate", [
+    ("max_value", None, 2**60),
+    ("min_value", None, 2**60),
+    ("max_drop_abs", 2**61, 2**60),
+    ("max_increase_abs", 0, 2**60),
+    ("max_drop_pct", 100, 100 - 2**60),
+    ("max_increase_pct", 100, 100 + 2**60),
+])
+def test_exact_integer_boundary_is_allowed(name, baseline, candidate):
+    breached, _, _ = _check_constraint(name, 2**60, baseline, candidate)
+    assert breached is False
+
+
+@pytest.mark.parametrize("name,baseline,sign", [
+    ("max_value", None, 1),
+    ("min_value", None, -1),
+    ("max_drop_abs", 0.0, -1),
+    ("max_increase_abs", 0.0, 1),
+    ("max_drop_pct", 100.0, -1),
+    ("max_increase_pct", 100.0, 1),
+])
+@pytest.mark.parametrize("delta,expected", [(5e-10, False), (2e-9, True)])
+def test_float_comparisons_retain_eps_tolerance(name, baseline, sign, delta, expected):
+    candidate = (baseline or 0.0) + sign * delta
+    breached, _, _ = _check_constraint(name, 0.0, baseline, candidate)
+    assert breached is expected
+
+
+@pytest.mark.parametrize("name,sign", [("max_increase_pct", 1), ("max_drop_pct", -1)])
+@pytest.mark.parametrize("threshold", [0, 10, 1e308])
+@pytest.mark.parametrize("candidate", [0.0, -0.0, 1e-9, 1e-12, math.nextafter(0.0, 1.0)])
+def test_zero_baseline_percentage_has_no_absolute_tolerance(name, sign, threshold, candidate):
+    breached, observed, message = _check_constraint(name, threshold, -0.0, sign * candidate)
+    assert breached is (candidate != 0)
+    assert observed is None
+    if candidate != 0:
+        assert "both 0" not in message
+
+
+@pytest.mark.parametrize("name,candidate", [("max_increase_pct", -1e-12), ("max_drop_pct", 1e-12)])
+def test_zero_baseline_percentage_improvements_pass(name, candidate):
+    assert _check_constraint(name, 0, 0, candidate)[0] is False

@@ -571,7 +571,10 @@ def load_pricing(path: str) -> PricingTable:
     elif not isinstance(data["currency"], str) or not data["currency"]:
         raise GateConfigError(f"pricing table {path}: 'currency' must be a non-empty string")
     else:
+        # ASCII only: str.upper() maps e.g. "ſ" (U+017F) to "S".
         currency = data["currency"]
+        if currency.isascii():
+            currency = currency.upper()
     if currency != "USD":
         raise GateConfigError(
             f"pricing table {path}: 'currency' must be exactly 'USD'; "

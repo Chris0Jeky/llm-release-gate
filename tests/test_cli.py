@@ -43,6 +43,36 @@ def test_red_example_exits_one_and_names_regressions(tmp_path, capsys):
     assert "citations.valid_rate" in out
 
 
+@pytest.mark.parametrize("metric,constraints,tokens,observed", [
+    ("tokens.total", {"max_value": 9007199254740995}, 9007199254740996, 9007199254740996),
+    ("cost.total_usd", {"max_increase_pct": 0}, 1, 1e-9),
+], ids=["neighboring-large-integer-ceiling", "tiny-positive-cost-from-zero"])
+def test_numeric_boundary_violation_exits_one(mini_gate, metric, constraints, tokens, observed):
+    paths = mini_gate(
+        dataset={"name": "d", "version": "1", "task": "rag", "items": [
+            {"id": "x", "input": {"question": "q"},
+             "expected": {"quality": {"must_contain": ["ok"]}}},
+        ]},
+        scorers={"scorers": [{"type": "keyword_quality"}]},
+        baseline_responses={"x": {"text": "ok", "prompt_tokens": 0, "completion_tokens": 0}},
+        candidate_responses={"x": {"text": "ok", "prompt_tokens": tokens, "completion_tokens": 0}},
+        thresholds={"rules": [{"metric": metric, **constraints}]},
+        pricing={"version": "1", "models": {
+            model: {"input_per_mtok": 0.001, "output_per_mtok": 0}
+            for model in ("m-base", "m-cand")
+        }},
+    )
+    exit_code = main(gate_argv(paths))
+    with open(f"{paths['out']}/report.json", encoding="utf-8") as stream:
+        report = json.load(stream)
+    assert report["metrics"][metric]["baseline"]["value"] == 0
+    assert report["metrics"][metric]["candidate"]["value"] == observed
+    assert exit_code == 1
+    assert report["gate"]["verdict"] == "fail"
+    rule = next(r for r in report["rules"] if r["metric"] == metric)
+    assert rule["checks"][0]["status"] == "breached"
+
+
 def test_missing_input_file_exits_two(tmp_path, capsys):
     argv = _example_argv("rag-support-bot", str(tmp_path / "d"))
     argv[argv.index("--dataset") + 1] = "does-not-exist.json"
@@ -75,6 +105,37 @@ def test_github_summary_and_outputs_written(mini_gate, monkeypatch, tmp_path):
     assert "verdict=pass" in out_text
     assert "exit-code=0" in out_text
     assert "result-hash=sha256:" in out_text
+
+
+@pytest.mark.parametrize("variable", ["GITHUB_OUTPUT", "GITHUB_STEP_SUMMARY"])
+def test_github_delivery_failure_reports_threshold_verdict_and_exit_two(
+    mini_gate, monkeypatch, tmp_path, capsys, variable,
+):
+    summary = tmp_path / "summary.md"
+    outputs = tmp_path / "outputs.txt"
+    monkeypatch.setenv("GITHUB_STEP_SUMMARY", str(summary))
+    monkeypatch.setenv("GITHUB_OUTPUT", str(outputs))
+    failed_path = outputs if variable == "GITHUB_OUTPUT" else summary
+    real_open = os.open
+
+    def failing_open(path, flags, *args, **kwargs):
+        if os.fspath(path) == str(failed_path) and flags & os.O_APPEND:
+            raise PermissionError("synthetic command-file write failure")
+        return real_open(path, flags, *args, **kwargs)
+
+    monkeypatch.setattr(os, "open", failing_open)
+    paths = mini_gate()
+    assert main(gate_argv(paths)) == 2
+    captured = capsys.readouterr()
+    message = "gate PASS (threshold verdict), but output delivery failed: exit 2"
+    assert message in captured.out
+    assert "llm-release-gate: gate PASS\n" not in captured.out
+    assert f"{variable} command file could not be written" in captured.err
+    assert "Traceback" not in captured.err
+    with open(f"{paths['out']}/report.json", encoding="utf-8") as stream:
+        assert json.load(stream)["gate"]["verdict"] == "pass"
+    if variable == "GITHUB_OUTPUT":
+        assert message in summary.read_text(encoding="utf-8")
 
 
 def test_no_github_env_no_files(mini_gate, monkeypatch):
