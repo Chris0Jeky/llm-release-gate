@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Fixed: extraction adapter v4 rejects duplicate JSON object keys at every depth
+  as output parse errors, preventing field-match and schema checks from passing
+  after earlier values were silently discarded. Valid extraction report hashes
+  also change because run summaries record the adapter version.
+
 - Fixed: reject empty or whitespace-only `expected.must_cite` ids at dataset load
   with a contextual configuration error (exit 2); such an id could never be cited.
   This tightens loading: a dataset that relied on a blank id now fails at load. (#162)
