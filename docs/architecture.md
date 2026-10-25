@@ -87,6 +87,11 @@ simulate a provider that reports no usage; an `error` entry raises `ProviderErro
 **Scorer config** — `{"scorers": [{"type", "options?"}]}`. Two scorers may not emit the
 same metric (validated at build time).
 
+The `json_schema` scorer v4 follows JSON Schema's numeric `integer` semantics:
+`1`, `1.0`, and `1e0` all satisfy `{"type": "integer"}` because their numeric
+value has no fractional part. Fractions, strings, and booleans do not. See the
+[JSON Schema numeric reference](https://json-schema.org/understanding-json-schema/reference/numeric#integer).
+
 **Thresholds** — `{"rules": [{"metric", <constraints>, "level?": "fail|warn",
 "on_unavailable?": "fail|warn|skip"}]}`. Constraints: `max_drop_abs`, `max_drop_pct`,
 `max_increase_abs`, `max_increase_pct` (candidate vs baseline), `min_value`, `max_value`

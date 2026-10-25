@@ -342,6 +342,29 @@ def test_schema_valid_object_passes():
     assert validate_against_schema(value, SCHEMA) == []
 
 
+@pytest.mark.parametrize("value", [0, -2, 0.0, -0.0, 1.0, -2.0, 1e20])
+def test_schema_integer_accepts_numbers_with_zero_fractional_part(value):
+    assert validate_against_schema(value, {"type": "integer"}) == []
+
+
+@pytest.mark.parametrize("value", [1.5, True, False, "1", None,
+                                  float("nan"), float("inf"), float("-inf")])
+def test_schema_integer_rejects_nonintegral_and_nonnumeric_values(value):
+    errors = validate_against_schema(value, {"type": "integer"})
+    assert len(errors) == 1
+    assert "expected integer" in errors[0]
+
+
+def test_schema_integral_floats_in_nested_arrays_still_enforce_enum():
+    schema = {"type": "object", "properties": {
+        "counts": {"type": "array", "items": {"type": "integer", "enum": [1, 2]}}
+    }}
+    assert validate_against_schema({"counts": [1.0, 2e0]}, schema) == []
+    errors = validate_against_schema({"counts": [1.0, 3.0]}, schema)
+    assert len(errors) == 1
+    assert "$.counts[1]" in errors[0] and "not in enum" in errors[0]
+
+
 def test_schema_allows_extras_by_default():
     errors = validate_against_schema(
         {"vendor": "A", "total": 1, "extra": 1},

@@ -43,6 +43,37 @@ def test_red_example_exits_one_and_names_regressions(tmp_path, capsys):
     assert "citations.valid_rate" in out
 
 
+@pytest.mark.parametrize("literal,expected_exit", [("1.0", 0), ("1e0", 0),
+                                                  ("1.5", 1), ("true", 1)])
+def test_integer_schema_gate_uses_numeric_value(mini_gate, literal, expected_exit):
+    paths = mini_gate(
+        dataset={"name": "integer-output", "version": "1", "task": "extraction", "items": [
+            {"id": "x", "input": {"text": "one item"}},
+        ]},
+        baseline_responses={"x": {"text": '{"count": 1}'}},
+        candidate_responses={"x": {"text": '{"count": ' + literal + '}'}},
+        scorers={"scorers": [{"type": "json_schema", "options": {"schema": {
+            "type": "object", "required": ["count"],
+            "properties": {"count": {"type": "integer"}},
+        }}}]},
+        thresholds={"rules": [{"metric": "schema.valid_rate", "min_value": 1}]},
+        include_pricing=False,
+    )
+    for role in ("baseline", "candidate"):
+        with open(paths[role], encoding="utf-8") as stream:
+            config = json.load(stream)
+        config["prompt"]["template"] = "$text"
+        write_json(paths["tmp"] / f"{role}.json", config)
+    assert main(gate_argv(paths)) == expected_exit
+    with open(f"{paths['out']}/report.json", encoding="utf-8") as stream:
+        report = json.load(stream)
+    metric = report["metrics"]["schema.valid_rate"]
+    assert metric["baseline"]["value"] == 1
+    assert metric["candidate"]["value"] == (1 if expected_exit == 0 else 0)
+    assert metric["candidate"]["denominator"] == 1
+    assert report["gate"]["verdict"] == ("pass" if expected_exit == 0 else "fail")
+
+
 @pytest.mark.parametrize("metric,constraints,tokens,observed", [
     ("tokens.total", {"max_value": 9007199254740995}, 9007199254740996, 9007199254740996),
     ("cost.total_usd", {"max_increase_pct": 0}, 1, 1e-9),
