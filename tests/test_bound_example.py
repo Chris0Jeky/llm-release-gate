@@ -2,7 +2,6 @@
 
 import json
 import os
-import shutil
 from pathlib import Path
 import subprocess
 import sys
@@ -54,10 +53,9 @@ def test_ci_exercises_bound_and_downgraded_action_inputs():
 
 
 
-@pytest.mark.skipif(shutil.which("bash") is None, reason="Action uses Bash; hosted Action jobs qualify it")
 @pytest.mark.parametrize("value,accepted", [("true", True), ("false", True), ("", False),
                                            ("TRUE", False), ("$(touch injected)", False)])
-def test_action_binding_boolean_is_literal_not_shell_code(tmp_path, value, accepted):
+def test_action_binding_boolean_is_literal_not_shell_code(tmp_path, action_bash, value, accepted):
     action = (ROOT / "action.yml").read_text(encoding="utf-8")
     step = action.split("    - name: Run gate\n", 1)[1]
     body = step.split("      run: |\n", 1)[1].split("\n    #", 1)[0]
@@ -70,7 +68,7 @@ def test_action_binding_boolean_is_literal_not_shell_code(tmp_path, value, accep
                GITHUB_OUTPUT=str(tmp_path / "outputs"), ARGV_OUTPUT=str(tmp_path / "argv"))
     for key in ("DATASET", "BASELINE", "CANDIDATE", "SCORERS", "THRESHOLDS", "OUT"):
         env["IN_" + key] = "file with spaces"
-    result = subprocess.run([shutil.which("bash"), "-c", script], env=env, cwd=tmp_path,
+    result = subprocess.run([action_bash, "-c", script], env=env, cwd=tmp_path,
                             capture_output=True, text=True, timeout=10)
     assert result.returncode == 0  # enforcement is deferred to the Action's final step
     assert not (tmp_path / "injected").exists()

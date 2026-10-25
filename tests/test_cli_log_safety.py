@@ -75,12 +75,8 @@ def test_json_diagnostics_preserve_values_without_workflow_commands(monkeypatch,
     assert json.loads(output) == receipt
 
 
-def test_action_self_test_scripts_capture_the_real_gate_stream(tmp_path, monkeypatch):
+def test_action_self_test_scripts_capture_the_real_gate_stream(tmp_path, monkeypatch, action_bash):
     root = Path(__file__).resolve().parents[1]
-    git_bash = Path('C:/Program Files/Git/bin/bash.exe')
-    bash = str(git_bash) if git_bash.exists() else shutil.which('bash')
-    if not bash:
-        pytest.skip('Action requires Bash')
     workflow = (root / '.github/workflows/ci.yml').read_text(encoding='utf-8')
 
     def workflow_python(name):
@@ -102,7 +98,7 @@ def test_action_self_test_scripts_capture_the_real_gate_stream(tmp_path, monkeyp
                IN_MAX_INPUT_BYTES='', IN_REQUIRE_BINDING='false')
     for role in ('dataset', 'baseline', 'candidate', 'scorers', 'thresholds', 'pricing'):
         env['IN_' + role.upper()] = f'out/action-log-inputs/{role}.json'
-    result = subprocess.run([bash, '-c', script], env=env, capture_output=True, timeout=20)
+    result = subprocess.run([action_bash, '-c', script], env=env, capture_output=True, timeout=20)
     assert result.returncode == 0, result.stderr
     assert b'::warning::' not in result.stdout and b'::add-mask::' not in result.stdout
     assert 'cli-exit=1' in (tmp_path / 'outputs').read_text(encoding='utf-8')
