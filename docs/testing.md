@@ -13,6 +13,10 @@ make ci           # test + demo-green + demo-red + demo-bound (what CI runs)
 
 Windows note: run under Git Bash (GNU make + sh), or call the underlying
 `python -m pytest` / `python -m llm_release_gate ...` commands directly.
+Action-script tests select Git Bash beside the Git executable on Windows, then
+try `C:/Program Files/Git/bin/bash.exe`; they skip if neither is available.
+They do not use the WindowsApps/WSL Bash alias or require a shell-selection PATH
+override. On POSIX they use Bash from PATH.
 
 ## What the suite covers (and deliberately not)
 

@@ -2,7 +2,6 @@
 
 import os
 from pathlib import Path
-import shutil
 import subprocess
 
 import pytest
@@ -103,16 +102,15 @@ def test_command_sinks_must_not_alias_each_other(mini_gate, monkeypatch):
     assert not Path(paths['out']).exists()
 
 
-@pytest.mark.skipif(shutil.which('bash') is None, reason='Action requires Bash')
 @pytest.mark.parametrize('value,expected', [('0', 0), ('1', 1), ('2', 2), ('127', 2),
     ('256', 2), ('-1', 2), ('', 2), ('bad', 2), ('$(touch injected)', 2)])
-def test_enforcement_treats_status_as_data_and_fails_closed(tmp_path, value, expected):
+def test_enforcement_treats_status_as_data_and_fails_closed(tmp_path, action_bash, value, expected):
     action = (ROOT / 'action.yml').read_text(encoding="utf-8")
     body = action.split('    - name: Enforce gate verdict\n', 1)[1].split('      run: |\n', 1)[1]
     script = '\n'.join(line[8:] for line in body.splitlines())
     # Emulate runner interpolation only for the old vulnerable implementation.
     script = script.replace('${{ steps.gate.outputs.cli-exit }}', value)
-    result = subprocess.run([shutil.which('bash'), '-c', script], cwd=tmp_path,
+    result = subprocess.run([action_bash, '-c', script], cwd=tmp_path,
                             env=dict(os.environ, GATE_EXIT_CODE=value), capture_output=True, timeout=10)
     assert not (tmp_path / 'injected').exists()
     assert result.returncode == expected

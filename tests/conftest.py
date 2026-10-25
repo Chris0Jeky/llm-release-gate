@@ -8,8 +8,29 @@ produce the exact failure they want to observe.
 from __future__ import annotations
 
 import json
+from pathlib import Path
+import shutil
+import sys
 
 import pytest
+
+
+def _find_action_bash():
+    if sys.platform == "win32":
+        # WSL's bash.exe does not preserve the native environment used by these tests.
+        git = shutil.which("git")
+        candidates = [Path(git).resolve().parent.parent / "bin/bash.exe"] if git else []
+        candidates.append(Path("C:/Program Files/Git/bin/bash.exe"))
+        return next((str(path) for path in candidates if path.is_file()), None)
+    return shutil.which("bash")
+
+
+@pytest.fixture
+def action_bash():
+    bash = _find_action_bash()
+    if bash is None:
+        pytest.skip("Action requires Git Bash on Windows or Bash on POSIX")
+    return bash
 
 BASE_MODEL = "m-base"
 CAND_MODEL = "m-cand"
