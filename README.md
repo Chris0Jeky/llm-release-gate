@@ -173,6 +173,10 @@ schema, or use `"type": "null"` to accept only JSON null.
 
 Extraction replies containing `NaN`, `Infinity`, `-Infinity` or overflowing
 numbers such as `1e999` are parse errors and fail schema validity checks.
+Extraction adapter v4 also rejects duplicate object keys at any depth, including
+inside arrays and code fences. These are output parse errors, so applicable
+`field_match` and `json_schema` checks fail rather than scoring only the last value.
+Repeated keys in separate objects remain valid.
 
 ### Metrics
 

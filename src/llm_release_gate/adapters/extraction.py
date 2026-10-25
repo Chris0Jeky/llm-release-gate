@@ -29,9 +29,18 @@ def _finite_float(literal: str) -> float:
     return value
 
 
+def _unique_object(pairs: list[tuple[str, object]]) -> dict:
+    obj = {}
+    for key, value in pairs:
+        if key in obj:
+            raise ValueError(f"duplicate key {key!r}")
+        obj[key] = value
+    return obj
+
+
 class ExtractionAdapter(TaskAdapter):
     name = "extraction"
-    version = "3"  # v3: reject NaN/Infinity literals and overflowing numbers
+    version = "4"  # v4: reject duplicate object keys at every depth
     required_input = ("text",)
 
     def prompt_fields(self, item: DatasetItem) -> dict[str, str]:
@@ -43,7 +52,8 @@ class ExtractionAdapter(TaskAdapter):
         if fence:
             body = fence.group(1)
         try:
-            obj = json.loads(body, parse_constant=_reject_constant, parse_float=_finite_float)
+            obj = json.loads(body, object_pairs_hook=_unique_object,
+                             parse_constant=_reject_constant, parse_float=_finite_float)
         except ValueError as exc:
             return ParsedOutput(text=text, parse_error=f"not valid JSON: {exc}")
         return ParsedOutput(text=text, json_obj=obj, has_json=True)
