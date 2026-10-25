@@ -86,7 +86,10 @@ def validate_against_schema(value, schema: dict, path: str = "$") -> list[str]:
         if isinstance(value, bool) and stype in ("number", "integer"):
             errors.append(f"{path}: expected {stype}, got boolean")
             return errors
-        if not isinstance(value, expected):
+        matches_type = isinstance(value, expected)
+        if stype == "integer" and isinstance(value, float):
+            matches_type = value.is_integer()
+        if not matches_type:
             errors.append(f"{path}: expected {stype}, got {type(value).__name__}")
             return errors
     if "enum" in schema and not any(json_equal(value, e) for e in schema["enum"]):
@@ -111,7 +114,7 @@ def validate_against_schema(value, schema: dict, path: str = "$") -> list[str]:
 
 class JsonSchemaScorer(Scorer):
     name = "json_schema"
-    version = "3"  # v3: distinguish parsed JSON null from absent JSON
+    version = "4"  # v4: integer accepts numbers with zero fractional part
     metrics = {
         "schema.valid_rate": {"direction": HIGHER, "kind": "rate", "mode": "pass_rate"},
     }
