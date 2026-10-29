@@ -18,6 +18,14 @@ try `C:/Program Files/Git/bin/bash.exe`; they skip if neither is available.
 They do not use the WindowsApps/WSL Bash alias or require a shell-selection PATH
 override. On POSIX they use Bash from PATH.
 
+Scope process-wide file-descriptor fault injection with `monkeypatch.context()`.
+Pytest's FD capture calls `os.fstat` after the test body, before fixture teardown;
+a test-wide fake stat result or injected error can corrupt capture instead of
+testing the input guard. The diagnostics tests restore `os.fstat`/`os.open`
+before that boundary and explicitly flush captured output afterward. Their
+nonregular-file rejection and closed-descriptor assertions remain in force;
+disabling capture or relaxing the input guard is not the repair.
+
 ## What the suite covers (and deliberately not)
 
 Tests target the behaviors CI depends on — verdict logic, reproducibility, hashing, cost
