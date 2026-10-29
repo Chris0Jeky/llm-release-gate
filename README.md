@@ -112,7 +112,7 @@ python -m llm_release_gate gate \
   --out out/assistant-cheap-regression
 ```
 
-Measured on this tree, 2026-10-12, Python 3.12.3. The process exits 1 and prints:
+Historical measurement from 2026-10-12, Python 3.12.3. The process exited 1 and printed:
 
 ```
 llm-release-gate: gate FAIL
@@ -123,9 +123,11 @@ llm-release-gate: gate FAIL
   result hash: sha256:432ccdf9bdb263f642d5607528f4b80cfe79bd15d0603fd543fa46ab78bd7b05
 ```
 
-The same run also prints a bundle hash and the report paths. The bundle hash covers `manifest.json`, which includes `created_at`, so it is not a cross-run identity. The result hash above matches the v0.2.0 red-demo measurement in [docs/testing.md](docs/testing.md). The green gates on this tree exited 0: RAG quality 7/8 to 8/8 with cost up 11.8%; extraction 6/6 and 6/6 with cost down 95.5%.
+The same run also prints a bundle hash and the report paths. The bundle hash covers `manifest.json`, which includes `created_at`, so it is not a cross-run identity. The result hash above matches the v0.2.0 red-demo measurement in [docs/testing.md](docs/testing.md). The green gates in that measurement exited 0: RAG quality 7/8 to 8/8 with cost up 11.8%; extraction 6/6 and 6/6 with cost down 95.5%.
 
-`make test` here collected 788 tests and exited 0 (pytest 9.1.1). Dated counts in `docs/testing.md` are snapshots of older commits. CI's test job runs `make ci` on Python 3.11 and 3.13; that hosted result is separate from this local run.
+On `main` at `9c9dba7d` (replayed offline on 2026-10-29), the red demo still exits 1 with three failed rules. The citation comparison now fails as **unavailable**: the baseline citation cohort is 8/10 items and the candidate cohort is 10/10. Comparing their aggregate rates as a numerical drop would hide the unpaired items. The animation above labels its item rows as an illustration; its rule panel reflects this current cohort guard.
+
+The earlier local test receipt recorded 788 collected tests and exit 0 (pytest 9.1.1). Dated counts in `docs/testing.md` are snapshots of older commits. CI's test job runs `make ci` on Python 3.11 and 3.13; those hosted results are separate from the historical local receipt.
 
 ## The gate
 
@@ -288,7 +290,7 @@ Released: GPL v0.2.0 on 2026-10-02, with `v0` moved to that same commit under an
 
 `main` has moved. Treat [CHANGELOG.md](CHANGELOG.md) "Unreleased" as the delta: consumer-policy audit, field-match v3, processing-failure accounting, command-file transport, bundle verification, output safety, request-bound replay, and input byte limits.
 
-Open work is the issue tracker, not a silent backlog in this file. As of 2026-10-12 the open set includes P2 correctness items (empty keyword assertions reported as a full pass, JSON Schema null handling, NaN and Infinity accepted by extraction schema checks, duplicate JSON keys, non-USD pricing, citation document ids, unpaired item cohorts, PR comment marker lookup, stale pass comments, and workflow-command text in diagnostics) plus two entry-gated issues: [#24](https://github.com/Chris0Jeky/llm-release-gate/issues/24) (a report-only adapter for pinned evidence, after a qualified fixture pair) and [#35](https://github.com/Chris0Jeky/llm-release-gate/issues/35) (non-finite latency follow-ups deferred to a real provider).
+Open work lives in the issue tracker. The 2026-10-29 source checkpoint has three open issues: [#24](https://github.com/Chris0Jeky/llm-release-gate/issues/24), a report-only pinned-evidence adapter with fixture prerequisites; [#35](https://github.com/Chris0Jeky/llm-release-gate/issues/35), deferred non-finite latency/provider follow-ups; and [#156](https://github.com/Chris0Jeky/llm-release-gate/issues/156), live two-leg PR-comment verification. [PR #170](https://github.com/Chris0Jeky/llm-release-gate/pull/170) separately addresses integral JSON numbers in integer schemas. The older correctness list is no longer a current backlog; merged fixes belong in [CHANGELOG.md](CHANGELOG.md) under "Unreleased". These links are a dated source snapshot, not evidence that the live-comment check or a new release has happened.
 
 [NEXT.md](NEXT.md) is the roadmap. Nothing there is built ahead of an observed trigger. In particular there is still no live model provider (that waits on two real users, then an owner choice and a `sensitive_data` review), no result store, no statistical confidence intervals, no LLM-judge scorer, no plugin entry points, no multi-candidate matrix, and no hosted UI. The 2026-09-10 acceleration notes under `docs/acceleration/` are a decision record, not a licence to skip those triggers.
 
