@@ -22,22 +22,26 @@ from conftest import gate_argv
 
 @pytest.mark.parametrize("target", ["dataset", "fixture"])
 @pytest.mark.parametrize("mode", [stat.S_IFCHR, stat.S_IFIFO])
-def test_opened_nonregular_input_is_rejected_before_read(tmp_path, monkeypatch, target, mode):
+def test_opened_nonregular_input_is_rejected_before_read(tmp_path, monkeypatch, capfd, target, mode):
     # Model the opened descriptor, including a path swapped after any stat check.
     # A harmless regular JSON file makes the pre-fix regression safe to run.
     path = tmp_path / "input.json"
     path.write_text('{"responses": {}}', encoding="utf-8")
-    monkeypatch.setattr(os, "fstat", lambda fd: SimpleNamespace(st_mode=mode))
-    with pytest.raises(GateConfigError, match="regular file") as excinfo:
-        if target == "dataset":
-            _load_json_file(str(path), "dataset")
-        else:
-            build_provider("fake", {"fixtures": str(path)}, str(tmp_path))
+    # Restore process-wide os functions before pytest snapshots its capture FDs.
+    with monkeypatch.context() as patch:
+        patch.setattr(os, "fstat", lambda fd: SimpleNamespace(st_mode=mode))
+        with pytest.raises(GateConfigError, match="regular file") as excinfo:
+            if target == "dataset":
+                _load_json_file(str(path), "dataset")
+            else:
+                build_provider("fake", {"fixtures": str(path)}, str(tmp_path))
     assert str(path) in str(excinfo.value)
     assert ("dataset" if target == "dataset" else "fake provider") in str(excinfo.value)
+    print("capture after input rejection")
+    assert capfd.readouterr() == ("capture after input rejection\n", "")
 
 
-def test_descriptor_is_closed_when_file_check_fails(tmp_path, monkeypatch):
+def test_descriptor_is_closed_when_file_check_fails(tmp_path, monkeypatch, capfd):
     path = tmp_path / "input.json"
     path.write_text("{}", encoding="utf-8")
     real_open, real_fstat = os.open, os.fstat
@@ -51,14 +55,17 @@ def test_descriptor_is_closed_when_file_check_fails(tmp_path, monkeypatch):
     def failed_check(fd):
         raise OSError(errno.EIO, "synthetic file check failure")
 
-    monkeypatch.setattr(os, "open", capture_open)
-    monkeypatch.setattr(os, "fstat", failed_check)
-    with pytest.raises(GateConfigError, match="could not be read"):
-        _load_json_file(str(path), "dataset")
+    with monkeypatch.context() as patch:
+        patch.setattr(os, "open", capture_open)
+        patch.setattr(os, "fstat", failed_check)
+        with pytest.raises(GateConfigError, match="could not be read"):
+            _load_json_file(str(path), "dataset")
     assert len(opened) == 1
     with pytest.raises(OSError) as excinfo:
         real_fstat(opened[0])
     assert excinfo.value.errno == errno.EBADF
+    print("capture after descriptor check")
+    assert capfd.readouterr() == ("capture after descriptor check\n", "")
 
 
 @pytest.mark.parametrize("target", ["dataset", "fixture"])
